@@ -19,7 +19,8 @@ declare global {
 }
 
 export function signToken(user: AuthUser): string {
-  return jwt.sign(user, config.jwtSecret, { expiresIn: config.jwtExpiresIn });
+  const options: jwt.SignOptions = { expiresIn: config.jwtExpiresIn as jwt.SignOptions['expiresIn'] };
+  return jwt.sign(user, config.jwtSecret, options);
 }
 
 export function authenticate(req: Request, res: Response, next: NextFunction) {

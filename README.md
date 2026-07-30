@@ -17,7 +17,7 @@ Sistem informasi akademik **full-stack** terintegrasi untuk perguruan tinggi, me
 
 ```
 siakad-terpadu/  (npm workspaces monorepo)
-├── backend/     Node.js + Express + TypeScript + Prisma (SQLite)
+├── backend/     Node.js + Express + TypeScript + Prisma (PostgreSQL)
 │   ├── prisma/schema.prisma   # Model data seluruh modul
 │   ├── prisma/seed.ts         # Data demo
 │   └── src/
@@ -36,24 +36,40 @@ siakad-terpadu/  (npm workspaces monorepo)
 
 **Stack:** TypeScript end-to-end · JWT auth dengan 9 peran (RBAC) · Prisma ORM · REST API · SPA React.
 
-## 🚀 Menjalankan
+## 🚀 Menjalankan (lokal)
 
-Prasyarat: Node.js ≥ 20.
+Prasyarat: Node.js ≥ 20 dan **PostgreSQL** (16+). Cara cepat menyalakan Postgres via Docker:
+
+```bash
+docker run --name siakad-pg -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=siakad -p 5432:5432 -d postgres:16
+```
 
 ```bash
 # 1. Install semua dependency (backend + frontend)
 npm install
 
-# 2. Siapkan database (push schema + seed data demo)
+# 2. Set koneksi DB (buat backend/.env dari contoh, lalu sesuaikan DATABASE_URL)
+cp backend/.env.example backend/.env
+#   DATABASE_URL="postgresql://postgres:postgres@localhost:5432/siakad?schema=public"
+
+# 3. Terapkan skema + seed data demo
 npm run db:setup
 
-# 3. Jalankan backend (:4000) + frontend (:5173) sekaligus
+# 4. Jalankan backend (:4000) + frontend (:5173) sekaligus
 npm run dev
 ```
 
 Buka **http://localhost:5173**.
 
 > Menjalankan terpisah: `npm run backend` dan `npm run frontend`.
+
+## ☁️ Deploy ke Google Cloud Run
+
+Aplikasi dikemas sebagai **satu container** (`Dockerfile`): API Express sekaligus menyajikan
+SPA React. Database produksi: **Cloud SQL for PostgreSQL**. Panduan lengkap perintah `gcloud`
+(buat Cloud SQL, secret, `gcloud run deploy --source .`) ada di **[`DEPLOY.md`](./DEPLOY.md)**.
+
+Migrasi database (`prisma migrate deploy`) berjalan otomatis saat container start.
 
 ## 🔑 Akun Demo
 
@@ -99,6 +115,7 @@ Semua endpoint di-prefix `/api`. Autentikasi via header `Authorization: Bearer <
 
 ## 🛠️ Catatan Teknis
 
-- Database default **SQLite** (`backend/prisma/dev.db`) agar zero-config. Untuk produksi, ganti `provider`/`DATABASE_URL` di `.env` ke PostgreSQL/MySQL lalu `npx prisma db push`.
+- Database **PostgreSQL** (Prisma). Skema dikelola lewat migrasi (`backend/prisma/migrations`), diterapkan otomatis via `prisma migrate deploy` saat container start.
+- **Single-container**: di produksi, backend menyajikan hasil build frontend (`PUBLIC_DIR`) dan mendengarkan `$PORT` (Cloud Run = 8080). Rute non-`/api` di-fallback ke `index.html` (SPA routing).
 - Integrasi Neofeeder di sini masih **simulasi** (payload dibangun & dilog). Untuk produksi tinggal menghubungkan ke web service Feeder PT resmi menggunakan token `GetToken`.
-- `.env` backend: `DATABASE_URL`, `JWT_SECRET`, `PORT`.
+- Env backend: `DATABASE_URL`, `JWT_SECRET`, `PORT`, `RUN_SEED` (opsional, seed data demo).

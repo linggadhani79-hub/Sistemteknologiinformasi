@@ -1,11 +1,12 @@
 // SIAKAD Terpadu — Skema Basis Data
 // Mencakup: Akademik, Neofeeder/PDDikti, PJJ, SPMI, LMS, PMB, Kepegawaian, LPPM
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 

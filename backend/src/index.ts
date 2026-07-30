@@ -1,5 +1,8 @@
 import express from 'express';
 import cors from 'cors';
+import path from 'node:path';
+import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { config } from './config.js';
 import { prisma } from './prisma.js';
 import { authenticate } from './middleware/auth.js';
@@ -43,8 +46,27 @@ app.get('/api/dashboard', authenticate, async (_req, res) => {
   res.json({ mahasiswa, dosen, prodi, pegawai, pendaftar, penelitian });
 });
 
-// 404 & error handler
-app.use((_req, res) => res.status(404).json({ message: 'Endpoint tidak ditemukan' }));
+// Sajikan frontend SPA (hasil build) bila tersedia — mode single-container (Cloud Run).
+// PUBLIC_DIR default: folder "public" di root aplikasi (lihat Dockerfile).
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const publicDir = process.env.PUBLIC_DIR ?? path.resolve(__dirname, '../public');
+const hasSpa = fs.existsSync(path.join(publicDir, 'index.html'));
+
+if (hasSpa) {
+  app.use(express.static(publicDir));
+}
+
+// 404 untuk API, fallback ke index.html untuk rute SPA
+app.use((req, res) => {
+  if (req.path.startsWith('/api')) {
+    return res.status(404).json({ message: 'Endpoint tidak ditemukan' });
+  }
+  if (hasSpa && req.method === 'GET') {
+    return res.sendFile(path.join(publicDir, 'index.html'));
+  }
+  res.status(404).json({ message: 'Not found' });
+});
+
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err);
   res.status(500).json({ message: 'Terjadi kesalahan server', detail: err?.message });

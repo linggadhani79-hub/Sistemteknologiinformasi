@@ -1,0 +1,13 @@
+**/node_modules
+**/dist
+**/build
+**/.git
+**/*.log
+**/.env
+**/.env.*
+backend/prisma/*.db
+backend/prisma/*.db-journal
+frontend/.vite
+**/*.tsbuildinfo
+.github
+*.md
