@@ -1,0 +1,51 @@
+name: Deploy ke Cloud Run
+
+# Deploy otomatis setiap push ke `main` (mis. saat PR di-merge).
+# Bisa juga dijalankan manual dari tab Actions (workflow_dispatch).
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  SERVICE: siakad
+  REGION: asia-southeast2 # ganti sesuai region Cloud Run Anda
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # wajib untuk Workload Identity Federation (auth tanpa key)
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Autentikasi ke Google Cloud (Workload Identity Federation)
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy (Cloud Build dari Dockerfile) ke Cloud Run
+        run: |
+          gcloud run deploy "$SERVICE" \
+            --source . \
+            --project "${{ secrets.GCP_PROJECT_ID }}" \
+            --region "$REGION" \
+            --platform managed \
+            --add-cloudsql-instances "${{ secrets.CLOUD_SQL_CONNECTION }}" \
+            --set-secrets "DATABASE_URL=DATABASE_URL:latest,JWT_SECRET=JWT_SECRET:latest" \
+            --allow-unauthenticated \
+            --cpu 1 --memory 512Mi --min-instances 0 --max-instances 3 \
+            --quiet
+
+      - name: Tampilkan URL service
+        run: |
+          gcloud run services describe "$SERVICE" \
+            --project "${{ secrets.GCP_PROJECT_ID }}" --region "$REGION" \
+            --format 'value(status.url)'

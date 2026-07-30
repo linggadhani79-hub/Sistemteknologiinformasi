@@ -108,6 +108,68 @@ gcloud run deploy "$SERVICE" \
   --allow-unauthenticated
 ```
 
+## 5. (Opsional) CI/CD otomatis via GitHub Actions
+
+Repo ini menyertakan workflow **`.github/workflows/deploy-cloudrun.yml`** yang otomatis
+menjalankan `gcloud run deploy --source .` setiap ada push ke `main` (mis. saat PR di-merge),
+atau dijalankan manual dari tab **Actions**. Autentikasi memakai **Workload Identity
+Federation (WIF)** — tanpa menyimpan service-account key.
+
+### a. Service account untuk deployer + role
+
+```bash
+gcloud iam service-accounts create gh-deployer --display-name="GitHub Actions Deployer"
+export DEPLOYER="gh-deployer@${PROJECT_ID}.iam.gserviceaccount.com"
+
+for ROLE in roles/run.admin roles/cloudbuild.builds.editor \
+            roles/artifactregistry.admin roles/storage.admin \
+            roles/iam.serviceAccountUser roles/secretmanager.secretAccessor; do
+  gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+    --member="serviceAccount:${DEPLOYER}" --role="$ROLE"
+done
+```
+
+### b. Workload Identity Federation (hubungkan ke repo GitHub)
+
+```bash
+gcloud iam workload-identity-pools create github-pool \
+  --location=global --display-name="GitHub Pool"
+
+gcloud iam workload-identity-pools providers create-oidc github-provider \
+  --location=global --workload-identity-pool=github-pool \
+  --display-name="GitHub Provider" \
+  --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository" \
+  --attribute-condition="assertion.repository=='linggadhani79-hub/Sistemteknologiinformasi'" \
+  --issuer-uri="https://token.actions.githubusercontent.com"
+
+export POOL_ID=$(gcloud iam workload-identity-pools describe github-pool \
+  --location=global --format='value(name)')
+
+# Izinkan repo GitHub meng-impersonate service account deployer
+gcloud iam service-accounts add-iam-policy-binding "$DEPLOYER" \
+  --role=roles/iam.workloadIdentityUser \
+  --member="principalSet://iam.googleapis.com/${POOL_ID}/attribute.repository/linggadhani79-hub/Sistemteknologiinformasi"
+
+# Nilai untuk secret GCP_WIF_PROVIDER:
+gcloud iam workload-identity-pools providers describe github-provider \
+  --location=global --workload-identity-pool=github-pool --format='value(name)'
+```
+
+### c. Set secret di GitHub
+
+Repo → **Settings → Secrets and variables → Actions → New repository secret**:
+
+| Secret | Nilai |
+|--------|-------|
+| `GCP_WIF_PROVIDER` | output langkah (b), mis. `projects/123.../locations/global/workloadIdentityPools/github-pool/providers/github-provider` |
+| `GCP_SERVICE_ACCOUNT` | `gh-deployer@PROJECT_ID.iam.gserviceaccount.com` |
+| `GCP_PROJECT_ID` | ID project GCP Anda |
+| `CLOUD_SQL_CONNECTION` | `PROJECT:REGION:INSTANCE` (dari `$CONN` di langkah 1) |
+
+> Pastikan `REGION` di workflow (`env.REGION`) sama dengan region Cloud Run/Cloud SQL Anda.
+> Secret `DATABASE_URL` & `JWT_SECRET` tetap di **Secret Manager** (langkah 2), bukan di GitHub.
+> Setelah secret terisi, merge PR ke `main` → workflow otomatis deploy.
+
 ## Catatan
 
 - **Migrasi** dijalankan otomatis (`prisma migrate deploy`) setiap container start — idempoten.
