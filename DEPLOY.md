@@ -37,6 +37,7 @@ gcloud services enable \
 ```bash
 gcloud sql instances create "$DB_INSTANCE" \
   --database-version=POSTGRES_16 \
+  --edition=ENTERPRISE \
   --tier=db-f1-micro \
   --region="$REGION"
 
