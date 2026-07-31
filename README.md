@@ -14,6 +14,12 @@ Sistem informasi akademik **full-stack** terintegrasi untuk perguruan tinggi, me
 | 🔬 **LPPM** | Penelitian, pengabdian masyarakat, publikasi ilmiah |
 | 🎓 **Wisuda** | Pendaftaran wisuda, verifikasi peserta, generate nomor ijazah, **slide seremoni** (foto + nama), **cetak ijazah** |
 
+> 🔥 Ada juga implementasi **paralel** berbasis Firebase (Auth, Firestore, Storage,
+> Cloud Functions) di [`firebase-app/`](./firebase-app) — dibangun agar frontend-nya
+> bisa di-preview sebagai aplikasi client-only di **Google AI Studio Build**, sesuatu
+> yang tidak bisa dilakukan versi Express/PostgreSQL di bawah ini (browser tidak bisa
+> bicara protokol TCP PostgreSQL). Lihat `firebase-app/README.md` untuk detail.
+
 ## 🏗️ Arsitektur
 
 ```

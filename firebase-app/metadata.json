@@ -1,0 +1,4 @@
+{
+  "name": "SIAKAD Terpadu",
+  "description": "Sistem Informasi Akademik Terpadu — Akademik, Neofeeder/PDDikti, PJJ, SPMI, LMS, PMB (CBT + Virtual Account), Kepegawaian, LPPM, dan Wisuda. Backend: Firebase (Auth, Firestore, Storage, Cloud Functions)."
+}

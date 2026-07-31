@@ -1,0 +1,156 @@
+rules_version = '2';
+
+// =====================================================================
+//  SIAKAD Terpadu — Firestore Security Rules
+//  Padanan RBAC dari middleware/auth.ts (backend Express) untuk 9 peran.
+//
+//  Prinsip:
+//  - Data referensi/master (prodi, matakuliah, dst): baca bebas (user login),
+//    tulis dibatasi per peran (mirip `writeRoles` di crudRouter Express).
+//  - Operasi dengan LOGIKA/KALKULASI (nilai+IPK, KRS approve, CBT grading,
+//    generate VA, generate nomor ijazah, payroll, sync Neofeeder) HANYA
+//    boleh lewat Cloud Functions (Admin SDK melewati rules ini) — klien
+//    tidak bisa menulis langsung ke koleksi tsb (`allow write: if false`).
+//  - `soalCbtKunci` tidak bisa dibaca klien sama sekali (kunci jawaban CBT
+//    hanya diakses oleh Cloud Function saat grading).
+// =====================================================================
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function uid() { return request.auth.uid; }
+    function myRole() {
+      return get(/databases/$(database)/documents/users/$(uid())).data.role;
+    }
+    function hasRole(roles) { return signedIn() && myRole() in roles; }
+
+    // Grup peran yang sering dipakai (padanan array writeRoles di Express)
+    function isAdmin() { return hasRole(['SUPERADMIN', 'ADMIN_AKADEMIK']); }
+    function isStaffAkademik() { return hasRole(['SUPERADMIN', 'ADMIN_AKADEMIK', 'DOSEN']); }
+    function isFeeder() { return hasRole(['SUPERADMIN', 'OPERATOR_FEEDER']); }
+    function isMutu() { return hasRole(['SUPERADMIN', 'AUDITOR_MUTU']); }
+    function isHR() { return hasRole(['SUPERADMIN', 'KEPEGAWAIAN']); }
+    function isLPPM() { return hasRole(['SUPERADMIN', 'LPPM']); }
+    function isMhs() { return hasRole(['MAHASISWA']); }
+    function isCalon() { return hasRole(['CALON_MAHASISWA']); }
+
+    // ---- Users / profil peran ----
+    match /users/{userId} {
+      allow read: if signedIn() && (uid() == userId || isAdmin() || isHR() || isLPPM() || isMutu() || isFeeder());
+      // Pembuatan akun (dgn role) & perubahan role dilakukan via Cloud Function (Admin SDK).
+      allow create, delete: if false;
+      allow update: if signedIn() && uid() == userId
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nama', 'hp']);
+    }
+
+    match /mahasiswa/{id} {
+      allow read: if signedIn() && (uid() == id || isStaffAkademik() || isFeeder());
+      allow create, delete: if isAdmin();
+      // Mahasiswa boleh ubah data kontak sendiri; field akademik (ipk, status, totalSks) hanya staf.
+      allow update: if isAdmin() || (signedIn() && uid() == id &&
+                     request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hp', 'alamat', 'foto']));
+    }
+
+    match /dosen/{id} {
+      allow read: if signedIn();
+      allow write: if isAdmin() || (signedIn() && uid() == id &&
+                    request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hp']));
+    }
+
+    // ---- Akademik: master data ----
+    match /fakultas/{id} { allow read: if signedIn(); allow write: if isAdmin(); }
+    match /prodi/{id} { allow read: if signedIn(); allow write: if isAdmin(); }
+    match /tahunAkademik/{id} { allow read: if signedIn(); allow write: if isAdmin(); }
+    match /kurikulum/{id} { allow read: if signedIn(); allow write: if isAdmin(); }
+    match /mataKuliah/{id} { allow read: if signedIn(); allow write: if isAdmin(); }
+    match /kelas/{id} { allow read: if signedIn(); allow write: if isAdmin(); }
+
+    // KRS & Nilai: hanya bisa lewat Cloud Function (validasi SKS, approval, kalkulasi IPK)
+    match /krs/{id} { allow read: if signedIn(); allow write: if false; }
+    match /nilai/{id} { allow read: if signedIn(); allow write: if false; }
+
+    // ---- Neofeeder ----
+    match /feederSyncLog/{id} { allow read: if isFeeder(); allow write: if false; }
+    match /feederMapping/{id} { allow read: if isFeeder(); allow write: if isFeeder(); }
+
+    // ---- PJJ ----
+    match /sesiPjj/{id} { allow read: if signedIn(); allow write: if isStaffAkademik(); }
+    match /kehadiranPjj/{id} {
+      allow read: if signedIn();
+      allow write: if isStaffAkademik() || (isMhs() && request.resource.data.mahasiswaId == uid());
+    }
+
+    // ---- SPMI ----
+    match /standarMutu/{id} { allow read: if signedIn(); allow write: if isMutu(); }
+    match /indikatorMutu/{id} { allow read: if signedIn(); allow write: if isMutu(); }
+    match /auditMutu/{id} { allow read: if isMutu(); allow write: if isMutu(); }
+    match /temuanAudit/{id} { allow read: if isMutu(); allow write: if isMutu(); }
+
+    // ---- LMS ----
+    match /course/{id} { allow read: if signedIn(); allow write: if isStaffAkademik(); }
+    match /modulLms/{id} { allow read: if signedIn(); allow write: if isStaffAkademik(); }
+    match /tugasLms/{id} { allow read: if signedIn(); allow write: if isStaffAkademik(); }
+    match /kuis/{id} { allow read: if signedIn(); allow write: if isStaffAkademik(); }
+    match /soalKuis/{id} { allow read: if signedIn(); allow write: if isStaffAkademik(); }
+    match /enrollment/{id} {
+      allow read: if signedIn();
+      allow write: if isStaffAkademik() || (isMhs() && request.resource.data.mahasiswaId == uid());
+    }
+    match /pengumpulanTugas/{id} {
+      allow read: if signedIn();
+      allow write: if isStaffAkademik() || (isMhs() && request.resource.data.mahasiswaId == uid());
+    }
+
+    // ---- PMB ----
+    match /gelombangPmb/{id} { allow read: if signedIn(); allow write: if isAdmin(); }
+    // Pendaftar dibuat via Cloud Function (generate noPendaftaran); status diubah admin/panitia.
+    match /pendaftar/{id} {
+      allow read: if signedIn() && (uid() == id || isAdmin());
+      allow create: if false;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+    match /berkasPendaftar/{id} {
+      allow read: if signedIn() && (isAdmin() || resource.data.pendaftarId == uid());
+      allow create: if isCalon() && request.resource.data.pendaftarId == uid();
+      allow update: if isAdmin() || (isCalon() && resource.data.pendaftarId == uid());
+      allow delete: if isAdmin();
+    }
+    match /konfigurasiVA/{bank} { allow read: if signedIn(); allow write: if isAdmin(); }
+    // Tagihan VA & status pembayaran hanya via Cloud Function.
+    match /tagihanVA/{id} {
+      allow read: if signedIn() && (isAdmin() || resource.data.pendaftarId == uid());
+      allow write: if false;
+    }
+    // Ditulis hanya lewat Cloud Function cbtSoalUpsert (agar sinkron dgn soalCbtKunci).
+    match /soalCbtPublic/{id} { allow read: if signedIn(); allow write: if false; }
+    // Kunci jawaban CBT: TIDAK BISA dibaca klien sama sekali, hanya Cloud Function (Admin SDK).
+    match /soalCbtKunci/{id} { allow read, write: if false; }
+    // Ujian & jawaban CBT hanya lewat Cloud Function (agar grading & kunci jawaban aman).
+    match /ujianCbt/{id} {
+      allow read: if signedIn() && (isAdmin() || id == uid());
+      allow write: if false;
+    }
+    match /jawabanCbt/{id} { allow read: if isAdmin(); allow write: if false; }
+
+    // ---- Kepegawaian ----
+    match /pegawai/{id} { allow read: if isHR(); allow write: if isHR(); }
+    match /absensi/{id} { allow read: if isHR(); allow write: if isHR(); }
+    match /cuti/{id} { allow read: if isHR(); allow write: if isHR(); }
+    // Payroll hanya via Cloud Function (kalkulasi tunjangan/potongan).
+    match /payroll/{id} { allow read: if isHR(); allow write: if false; }
+
+    // ---- LPPM ----
+    match /penelitian/{id} { allow read: if signedIn(); allow write: if isLPPM() || hasRole(['DOSEN']); }
+    match /pengabdian/{id} { allow read: if signedIn(); allow write: if isLPPM() || hasRole(['DOSEN']); }
+    match /publikasi/{id} { allow read: if signedIn(); allow write: if isLPPM() || hasRole(['DOSEN']); }
+
+    // ---- Wisuda ----
+    match /periodeWisuda/{id} { allow read: if signedIn(); allow write: if isAdmin(); }
+    // Pendaftaran wisuda & generate nomor/ijazah hanya via Cloud Function.
+    match /pesertaWisuda/{id} {
+      allow read: if signedIn() && (isAdmin() || resource.data.mahasiswaId == uid());
+      allow write: if false;
+    }
+  }
+}

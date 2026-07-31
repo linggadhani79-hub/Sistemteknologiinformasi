@@ -1,0 +1,29 @@
+rules_version = '2';
+
+// Firebase Storage — berkas PMB & foto (padanan upload berkas/foto di backend Express).
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function signedIn() { return request.auth != null; }
+    function myRole() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role;
+    }
+    function isAdmin() { return signedIn() && myRole() in ['SUPERADMIN', 'ADMIN_AKADEMIK']; }
+
+    // Berkas persyaratan PMB: hanya pemilik pendaftaran (folder = uid calon) & admin.
+    match /berkas/{pendaftarId}/{allPaths=**} {
+      allow read: if signedIn() && (request.auth.uid == pendaftarId || isAdmin());
+      allow write: if signedIn() && request.auth.uid == pendaftarId
+                   && request.resource.size < 3 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*|application/pdf');
+    }
+
+    // Foto profil mahasiswa / wisuda — dapat dilihat pengguna yang login (untuk slide seremoni).
+    match /foto/{uid}/{allPaths=**} {
+      allow read: if signedIn();
+      allow write: if signedIn() && (request.auth.uid == uid || isAdmin())
+                   && request.resource.size < 2 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
+  }
+}
