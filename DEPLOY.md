@@ -64,11 +64,16 @@ printf '%s' "$(openssl rand -hex 32)" | gcloud secrets create JWT_SECRET --data-
 
 > Jika secret sudah ada, ganti `create` → `versions add`.
 
-Beri akun service Cloud Run akses baca secret (biasanya otomatis, kalau perlu):
+Beri akun service Cloud Run izin: **baca secret** + **konek Cloud SQL** (`roles/cloudsql.client`
+wajib agar container bisa membuka koneksi ke instance):
 
 ```bash
 PROJECT_NUMBER=$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')
 SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:${SA}" --role="roles/cloudsql.client"
+
 for S in DATABASE_URL JWT_SECRET; do
   gcloud secrets add-iam-policy-binding "$S" \
     --member="serviceAccount:${SA}" --role="roles/secretmanager.secretAccessor"

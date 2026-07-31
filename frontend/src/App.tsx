@@ -11,6 +11,10 @@ import { PmbDaftar } from './pages/PmbDaftar';
 import { Lms } from './pages/Lms';
 import { Pjj } from './pages/Pjj';
 import { Payroll } from './pages/Payroll';
+import { WisudaDaftar } from './pages/WisudaDaftar';
+import { WisudaAdmin } from './pages/WisudaAdmin';
+import { WisudaSlide } from './pages/WisudaSlide';
+import { Ijazah } from './pages/Ijazah';
 import * as M from './pages/modules';
 
 function Protected({ children }: { children: JSX.Element }) {
@@ -18,6 +22,14 @@ function Protected({ children }: { children: JSX.Element }) {
   if (loading) return <Spinner />;
   if (!user) return <Navigate to="/login" replace />;
   return <Layout>{children}</Layout>;
+}
+
+// Halaman layar penuh (tanpa sidebar): slide seremoni & cetak ijazah
+function FullScreen({ children }: { children: JSX.Element }) {
+  const { user, loading } = useAuth();
+  if (loading) return <Spinner />;
+  if (!user) return <Navigate to="/login" replace />;
+  return children;
 }
 
 function Routing() {
@@ -45,6 +57,12 @@ function Routing() {
       {/* PMB */}
       <Route path="/pmb/pendaftar" element={P(<M.PendaftarPage />)} />
       <Route path="/pmb/daftar" element={P(<PmbDaftar />)} />
+      {/* Wisuda */}
+      <Route path="/wisuda/daftar" element={P(<WisudaDaftar />)} />
+      <Route path="/wisuda/peserta" element={P(<WisudaAdmin />)} />
+      <Route path="/wisuda/periode" element={P(<M.PeriodeWisudaPage />)} />
+      <Route path="/wisuda/slide/:periodeId" element={<FullScreen><WisudaSlide /></FullScreen>} />
+      <Route path="/wisuda/ijazah/:pesertaId" element={P(<Ijazah />)} />
       {/* Kepegawaian */}
       <Route path="/kepegawaian/pegawai" element={P(<M.PegawaiPage />)} />
       <Route path="/kepegawaian/payroll" element={P(<Payroll />)} />

@@ -49,6 +49,14 @@ export const navGroups: { group: string; items: NavItem[] }[] = [
     ],
   },
   {
+    group: 'Wisuda',
+    items: [
+      { label: 'Pendaftaran Wisuda', path: '/wisuda/daftar', icon: '🎓', roles: ['MAHASISWA'] },
+      { label: 'Peserta Wisuda', path: '/wisuda/peserta', icon: '🎉', roles: ['SUPERADMIN', 'ADMIN_AKADEMIK'] },
+      { label: 'Periode Wisuda', path: '/wisuda/periode', icon: '📅', roles: ['SUPERADMIN', 'ADMIN_AKADEMIK'] },
+    ],
+  },
+  {
     group: 'Kepegawaian',
     items: [
       { label: 'Data Pegawai', path: '/kepegawaian/pegawai', icon: '👥', roles: ['SUPERADMIN', 'KEPEGAWAIAN'] },

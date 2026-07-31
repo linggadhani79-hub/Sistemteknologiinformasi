@@ -19,18 +19,18 @@ export function PageHeader({ title, subtitle, action }: { title: string; subtitl
 
 export function StatCard({ label, value, icon, color = 'brand' }: { label: string; value: ReactNode; icon?: string; color?: string }) {
   const colors: Record<string, string> = {
-    brand: 'bg-blue-50 text-blue-600',
-    green: 'bg-green-50 text-green-600',
-    amber: 'bg-amber-50 text-amber-600',
-    purple: 'bg-purple-50 text-purple-600',
-    rose: 'bg-rose-50 text-rose-600',
+    brand: 'from-indigo-500 to-violet-600',
+    green: 'from-emerald-500 to-teal-600',
+    amber: 'from-amber-500 to-orange-600',
+    purple: 'from-fuchsia-500 to-purple-600',
+    rose: 'from-rose-500 to-pink-600',
   };
   return (
-    <div className="card flex items-center gap-4">
-      {icon && <div className={`flex h-12 w-12 items-center justify-center rounded-lg text-xl ${colors[color] ?? colors.brand}`}>{icon}</div>}
+    <div className="card card-hover flex items-center gap-4">
+      {icon && <div className={`flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br text-xl text-white shadow-sm ${colors[color] ?? colors.brand}`}>{icon}</div>}
       <div>
-        <div className="text-2xl font-bold">{value}</div>
-        <div className="text-sm text-gray-500">{label}</div>
+        <div className="text-2xl font-bold text-slate-800">{value}</div>
+        <div className="text-sm text-slate-400">{label}</div>
       </div>
     </div>
   );

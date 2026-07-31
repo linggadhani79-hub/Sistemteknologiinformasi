@@ -1,5 +1,5 @@
 import { useAuth } from '../auth';
-import { PageHeader, StatCard, Spinner, useFetch } from '../components/ui';
+import { StatCard, Spinner, useFetch } from '../components/ui';
 
 export function Dashboard() {
   const { user } = useAuth();
@@ -7,7 +7,13 @@ export function Dashboard() {
 
   return (
     <div>
-      <PageHeader title={`Selamat datang, ${user?.nama?.split(' ')[0]} 👋`} subtitle="Ringkasan Sistem Informasi Akademik Terpadu" />
+      <div className="relative mb-6 overflow-hidden rounded-2xl bg-gradient-to-br from-brand-600 via-brand-500 to-violet-500 p-8 text-white shadow-lg shadow-brand-500/20">
+        <div className="relative z-10">
+          <h1 className="text-2xl font-bold">Selamat datang, {user?.nama?.split(' ')[0]} 👋</h1>
+          <p className="mt-1 text-brand-100">Ringkasan Sistem Informasi Akademik Terpadu</p>
+        </div>
+        <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[120px] opacity-20">🎓</div>
+      </div>
       {loading ? (
         <Spinner />
       ) : (
@@ -32,6 +38,7 @@ export function Dashboard() {
             <li>📋 <b>PMB</b> — Penerimaan mahasiswa baru</li>
             <li>👥 <b>Kepegawaian</b> — Data pegawai, absensi, payroll</li>
             <li>🔬 <b>LPPM</b> — Penelitian, pengabdian, publikasi</li>
+            <li>🎓 <b>Wisuda</b> — Pendaftaran, slide seremoni, cetak ijazah</li>
           </ul>
         </div>
         <div className="card">

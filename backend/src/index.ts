@@ -15,6 +15,7 @@ import { lmsRouter } from './modules/lms.js';
 import { pmbRouter } from './modules/pmb.js';
 import { kepegawaianRouter } from './modules/kepegawaian.js';
 import { lppmRouter } from './modules/lppm.js';
+import { wisudaRouter } from './modules/wisuda.js';
 
 const app = express();
 app.use(cors());
@@ -32,6 +33,7 @@ app.use('/api/lms', lmsRouter);
 app.use('/api/pmb', pmbRouter);
 app.use('/api/kepegawaian', kepegawaianRouter);
 app.use('/api/lppm', lppmRouter);
+app.use('/api/wisuda', wisudaRouter);
 
 // Ringkasan dashboard utama (lintas modul)
 app.get('/api/dashboard', authenticate, async (_req, res) => {

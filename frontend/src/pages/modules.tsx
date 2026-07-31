@@ -134,3 +134,15 @@ export const PublikasiPage = () => (
     { key: 'indeksasi', label: 'Indeksasi', badge: true },
   ]} />
 );
+
+// ---- WISUDA ----
+export const PeriodeWisudaPage = () => (
+  <ResourceList title="Periode Wisuda" endpoint="/wisuda/periode" searchable={false} columns={[
+    { key: 'kode', label: 'Kode' },
+    { key: 'nama', label: 'Nama Periode' },
+    { key: 'tanggal', label: 'Tanggal', render: (r) => new Date(r.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) },
+    { key: 'lokasi', label: 'Lokasi' },
+    { key: 'biaya', label: 'Biaya', render: (r) => fmtRupiah(r.biaya) },
+    { key: 'aktif', label: 'Status', render: (r) => (r.aktif ? 'Aktif' : 'Tutup') },
+  ]} />
+);

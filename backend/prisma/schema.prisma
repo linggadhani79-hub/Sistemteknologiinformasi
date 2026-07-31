@@ -112,6 +112,7 @@ model Mahasiswa {
   tempatLahir     String?
   alamat          String?
   hp              String?
+  foto            String?         // URL/data URI foto mahasiswa
 
   dosenWaliId     String?
   dosenWali       Dosen?          @relation("DosenWali", fields: [dosenWaliId], references: [id])
@@ -120,6 +121,7 @@ model Mahasiswa {
   nilai           Nilai[]
   enrollment      Enrollment[]
   sesiPjjHadir    KehadiranPjj[]
+  pesertaWisuda   PesertaWisuda[]
   createdAt       DateTime        @default(now())
 }
 
@@ -609,4 +611,47 @@ model Publikasi {
   indeksasi String? // SINTA, Scopus, WoS, dll
   doi       String?
   url       String?
+}
+
+// =====================================================================
+//  WISUDA — Pendaftaran, slide seremoni, ijazah
+// =====================================================================
+model PeriodeWisuda {
+  id        String          @id @default(cuid())
+  kode      String          @unique
+  nama      String // Wisuda Periode I TA 2024/2025
+  tanggal   DateTime
+  lokasi    String?
+  kuota     Int             @default(500)
+  biaya     Float           @default(0)
+  aktif     Boolean         @default(true)
+  createdAt DateTime        @default(now())
+  peserta   PesertaWisuda[]
+}
+
+enum StatusWisuda {
+  DAFTAR
+  VERIFIKASI
+  DITERIMA
+  DITOLAK
+  SELESAI
+}
+
+model PesertaWisuda {
+  id           String        @id @default(cuid())
+  periodeId    String
+  periode      PeriodeWisuda @relation(fields: [periodeId], references: [id], onDelete: Cascade)
+  mahasiswaId  String
+  mahasiswa    Mahasiswa     @relation(fields: [mahasiswaId], references: [id])
+  nomorUrut    Int? // nomor urut prosesi
+  noIjazah     String? // nomor seri ijazah
+  judulSkripsi String?
+  ipk          Float?
+  predikat     String? // MEMUASKAN | SANGAT_MEMUASKAN | CUMLAUDE
+  fotoUrl      String? // foto wisuda (URL/data URI); fallback ke foto mahasiswa
+  status       StatusWisuda  @default(DAFTAR)
+  catatan      String?
+  tanggalDaftar DateTime     @default(now())
+
+  @@unique([periodeId, mahasiswaId])
 }

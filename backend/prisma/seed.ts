@@ -8,6 +8,8 @@ async function main() {
 
   // Bersihkan (urutan mengikuti relasi)
   await prisma.$transaction([
+    prisma.pesertaWisuda.deleteMany(),
+    prisma.periodeWisuda.deleteMany(),
     prisma.kehadiranPjj.deleteMany(),
     prisma.sesiPjj.deleteMany(),
     prisma.pengumpulanTugas.deleteMany(),
@@ -256,6 +258,45 @@ async function main() {
   await prisma.publikasi.create({
     data: { judul: 'A Deep Learning Approach for Student Performance Prediction', penulisId: dosen[0].id, jenis: 'JURNAL', namaMedia: 'Jurnal Teknologi Informasi', tahun: 2024, indeksasi: 'Scopus Q3', doi: '10.1234/jti.2024.001' },
   });
+
+  // ---- Wisuda ----
+  const periodeWisuda = await prisma.periodeWisuda.create({
+    data: {
+      kode: 'WSD-2025-1',
+      nama: 'Wisuda Periode I TA 2024/2025',
+      tanggal: new Date('2025-03-15'),
+      lokasi: 'Auditorium Utama Kampus',
+      kuota: 500,
+      biaya: 1500000,
+      aktif: true,
+    },
+  });
+  const predikatOf = (ipk: number) =>
+    ipk >= 3.51 ? 'CUMLAUDE' : ipk >= 3.01 ? 'SANGAT_MEMUASKAN' : ipk >= 2.76 ? 'MEMUASKAN' : 'CUKUP';
+  const judulSkripsi = [
+    'Sistem Rekomendasi Mata Kuliah Berbasis Collaborative Filtering',
+    'Analisis Sentimen Ulasan Mahasiswa Menggunakan Deep Learning',
+    'Optimasi Rute Distribusi dengan Algoritma Genetika',
+    'Deteksi Plagiarisme Dokumen Akademik Berbasis NLP',
+  ];
+  for (let i = 0; i < mahasiswa.length; i++) {
+    const m = mahasiswa[i];
+    const ipk = m.ipk || 3.4;
+    await prisma.mahasiswa.update({ where: { id: m.id }, data: { foto: `https://i.pravatar.cc/400?img=${i + 11}` } });
+    await prisma.pesertaWisuda.create({
+      data: {
+        periodeId: periodeWisuda.id,
+        mahasiswaId: m.id,
+        nomorUrut: i + 1,
+        noIjazah: `WSD-2025-1/${String(i + 1).padStart(4, '0')}/2025`,
+        judulSkripsi: judulSkripsi[i % judulSkripsi.length],
+        ipk,
+        predikat: predikatOf(ipk),
+        fotoUrl: `https://i.pravatar.cc/400?img=${i + 11}`,
+        status: 'DITERIMA',
+      },
+    });
+  }
 
   // ---- Feeder mapping contoh ----
   await prisma.feederMapping.createMany({

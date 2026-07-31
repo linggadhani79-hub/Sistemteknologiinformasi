@@ -12,6 +12,7 @@ Sistem informasi akademik **full-stack** terintegrasi untuk perguruan tinggi, me
 | 📋 **PMB** | Penerimaan Mahasiswa Baru: gelombang, pendaftaran online, alur seleksi |
 | 👥 **Kepegawaian** | Data pegawai, absensi, cuti, generate payroll |
 | 🔬 **LPPM** | Penelitian, pengabdian masyarakat, publikasi ilmiah |
+| 🎓 **Wisuda** | Pendaftaran wisuda, verifikasi peserta, generate nomor ijazah, **slide seremoni** (foto + nama), **cetak ijazah** |
 
 ## 🏗️ Arsitektur
 
@@ -104,6 +105,7 @@ Semua endpoint di-prefix `/api`. Autentikasi via header `Authorization: Bearer <
 | PMB | `POST /pmb/daftar`, `GET /pmb/status/saya`, `GET /pmb/dashboard` |
 | Kepegawaian | `GET /kepegawaian/pegawai`, `POST /kepegawaian/payroll/generate` |
 | LPPM | `GET /lppm/penelitian`, `PATCH /lppm/penelitian/:id/review` |
+| Wisuda | `POST /wisuda/daftar`, `GET /wisuda/periode/:id/slide`, `POST /wisuda/periode/:id/generate-nomor`, `GET /wisuda/ijazah/:id` |
 
 ## 🧠 Logika Bisnis Utama
 

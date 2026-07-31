@@ -17,17 +17,17 @@ export function Layout({ children }: { children: ReactNode }) {
     <div className="flex min-h-screen">
       {/* Sidebar */}
       <aside className={`fixed inset-y-0 left-0 z-30 w-64 transform overflow-y-auto bg-white shadow-lg transition-transform lg:static lg:translate-x-0 ${open ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="flex items-center gap-2 border-b px-5 py-4">
-          <span className="text-2xl">🎓</span>
+        <div className="flex items-center gap-3 border-b border-slate-100 px-5 py-4">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 text-xl shadow-sm">🎓</span>
           <div>
-            <div className="font-bold leading-tight">SIAKAD Terpadu</div>
-            <div className="text-xs text-gray-400">Sistem Informasi Akademik</div>
+            <div className="font-bold leading-tight text-slate-800">SIAKAD Terpadu</div>
+            <div className="text-xs text-slate-400">Sistem Informasi Akademik</div>
           </div>
         </div>
         <nav className="p-3">
           {groups.map((g) => (
             <div key={g.group} className="mb-4">
-              <div className="mb-1 px-3 text-xs font-semibold uppercase tracking-wide text-gray-400">{g.group}</div>
+              <div className="mb-1 px-3 text-[10px] font-bold uppercase tracking-widest text-slate-300">{g.group}</div>
               {g.items.map((i) => (
                 <NavLink
                   key={i.path}
@@ -35,7 +35,7 @@ export function Layout({ children }: { children: ReactNode }) {
                   end={i.path === '/'}
                   onClick={() => setOpen(false)}
                   className={({ isActive }) =>
-                    `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${isActive ? 'bg-brand-50 text-brand-600' : 'text-gray-600 hover:bg-gray-50'}`
+                    `flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition ${isActive ? 'bg-gradient-to-r from-brand-500 to-brand-600 text-white shadow-sm shadow-brand-500/30' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`
                   }
                 >
                   <span>{i.icon}</span>
