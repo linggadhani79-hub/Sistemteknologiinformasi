@@ -44,8 +44,12 @@ export const navGroups: { group: string; items: NavItem[] }[] = [
   {
     group: 'PMB',
     items: [
-      { label: 'Pendaftar', path: '/pmb/pendaftar', icon: '📋', roles: ['SUPERADMIN', 'ADMIN_AKADEMIK'] },
       { label: 'Pendaftaran Saya', path: '/pmb/daftar', icon: '✍️', roles: ['CALON_MAHASISWA'] },
+      { label: 'Pendaftar', path: '/pmb/pendaftar', icon: '📋', roles: ['SUPERADMIN', 'ADMIN_AKADEMIK'] },
+      { label: 'Verifikasi Berkas', path: '/pmb/berkas', icon: '📎', roles: ['SUPERADMIN', 'ADMIN_AKADEMIK'] },
+      { label: 'Pembayaran', path: '/pmb/pembayaran', icon: '💳', roles: ['SUPERADMIN', 'ADMIN_AKADEMIK'] },
+      { label: 'Bank VA', path: '/pmb/bank-va', icon: '🏦', roles: ['SUPERADMIN', 'ADMIN_AKADEMIK'] },
+      { label: 'Bank Soal CBT', path: '/pmb/soal-cbt', icon: '🖥️', roles: ['SUPERADMIN', 'ADMIN_AKADEMIK'] },
     ],
   },
   {

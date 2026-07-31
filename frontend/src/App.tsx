@@ -15,6 +15,7 @@ import { WisudaDaftar } from './pages/WisudaDaftar';
 import { WisudaAdmin } from './pages/WisudaAdmin';
 import { WisudaSlide } from './pages/WisudaSlide';
 import { Ijazah } from './pages/Ijazah';
+import { PmbBerkas, PmbPembayaran, PmbBankVA } from './pages/PmbAdmin';
 import * as M from './pages/modules';
 
 function Protected({ children }: { children: JSX.Element }) {
@@ -57,6 +58,10 @@ function Routing() {
       {/* PMB */}
       <Route path="/pmb/pendaftar" element={P(<M.PendaftarPage />)} />
       <Route path="/pmb/daftar" element={P(<PmbDaftar />)} />
+      <Route path="/pmb/berkas" element={P(<PmbBerkas />)} />
+      <Route path="/pmb/pembayaran" element={P(<PmbPembayaran />)} />
+      <Route path="/pmb/bank-va" element={P(<PmbBankVA />)} />
+      <Route path="/pmb/soal-cbt" element={P(<M.SoalCbtPage />)} />
       {/* Wisuda */}
       <Route path="/wisuda/daftar" element={P(<WisudaDaftar />)} />
       <Route path="/wisuda/peserta" element={P(<WisudaAdmin />)} />

@@ -89,6 +89,14 @@ export const PendaftarPage = () => (
   ]} />
 );
 
+export const SoalCbtPage = () => (
+  <ResourceList title="Bank Soal CBT" endpoint="/pmb/cbt/soal" columns={[
+    { key: 'kategori', label: 'Kategori', badge: true },
+    { key: 'pertanyaan', label: 'Pertanyaan' },
+    { key: 'jawaban', label: 'Kunci' },
+  ]} />
+);
+
 // ---------- KEPEGAWAIAN ----------
 export const PegawaiPage = () => (
   <ResourceList title="Data Pegawai" endpoint="/kepegawaian/pegawai" columns={[

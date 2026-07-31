@@ -494,6 +494,103 @@ model Pendaftar {
   nilaiUjian     Float?
   catatan        String?
   createdAt      DateTime        @default(now())
+
+  berkas         BerkasPendaftar[]
+  tagihan        TagihanVA[]
+  ujianCbt       UjianCbt?
+}
+
+// PMB — Upload berkas persyaratan
+model BerkasPendaftar {
+  id          String    @id @default(cuid())
+  pendaftarId String
+  pendaftar   Pendaftar @relation(fields: [pendaftarId], references: [id], onDelete: Cascade)
+  jenis       String // IJAZAH | FOTO | KTP | KK | RAPOR | AKTA
+  namaFile    String
+  mimeType    String?
+  ukuran      Int? // bytes
+  data        String? // data URI base64 (produksi: ganti ke GCS/URL)
+  status      String    @default("PENDING") // PENDING | VERIFIED | REJECTED
+  catatan     String?
+  createdAt   DateTime  @default(now())
+
+  @@unique([pendaftarId, jenis])
+}
+
+// PMB — Konfigurasi Virtual Account per bank (di-setting admin)
+model KonfigurasiVA {
+  id       String  @id @default(cuid())
+  bank     String  @unique // BRI | MANDIRI | BTN
+  namaBank String
+  kodeBank String? // biller/company code
+  prefixVA String // prefix nomor VA
+  aktif    Boolean @default(true)
+}
+
+enum StatusBayar {
+  BELUM_BAYAR
+  MENUNGGU_VERIFIKASI
+  LUNAS
+  KEDALUWARSA
+  DIBATALKAN
+}
+
+// PMB — Tagihan / Virtual Account pendaftar
+model TagihanVA {
+  id          String      @id @default(cuid())
+  pendaftarId String
+  pendaftar   Pendaftar   @relation(fields: [pendaftarId], references: [id], onDelete: Cascade)
+  bank        String // BRI | MANDIRI | BTN
+  namaBank    String
+  nomorVA     String      @unique
+  nomorHp     String?
+  jumlah      Float
+  status      StatusBayar @default(BELUM_BAYAR)
+  jatuhTempo  DateTime?
+  paidAt      DateTime?
+  createdAt   DateTime    @default(now())
+}
+
+// PMB — CBT (Computer Based Test)
+model SoalCbt {
+  id         String @id @default(cuid())
+  kategori   String // TPA | MATEMATIKA | BAHASA_INDONESIA | BAHASA_INGGRIS
+  pertanyaan String
+  opsiA      String
+  opsiB      String
+  opsiC      String
+  opsiD      String
+  jawaban    String // A | B | C | D
+}
+
+enum StatusUjian {
+  BELUM
+  BERLANGSUNG
+  SELESAI
+}
+
+model UjianCbt {
+  id          String       @id @default(cuid())
+  pendaftarId String       @unique
+  pendaftar   Pendaftar    @relation(fields: [pendaftarId], references: [id], onDelete: Cascade)
+  mulai       DateTime?
+  selesai     DateTime?
+  durasiMenit Int          @default(60)
+  jumlahSoal  Int?
+  jumlahBenar Int?
+  nilai       Float?
+  status      StatusUjian  @default(BELUM)
+  jawaban     JawabanCbt[]
+}
+
+model JawabanCbt {
+  id      String   @id @default(cuid())
+  ujianId String
+  ujian   UjianCbt @relation(fields: [ujianId], references: [id], onDelete: Cascade)
+  soalId  String
+  jawaban String
+
+  @@unique([ujianId, soalId])
 }
 
 // =====================================================================
