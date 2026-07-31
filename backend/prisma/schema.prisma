@@ -1,0 +1,657 @@
+// SIAKAD Terpadu — Skema Basis Data
+// Mencakup: Akademik, Neofeeder/PDDikti, PJJ, SPMI, LMS, PMB, Kepegawaian, LPPM
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =====================================================================
+//  IDENTITAS & AKSES (RBAC)
+// =====================================================================
+enum Role {
+  SUPERADMIN
+  ADMIN_AKADEMIK
+  DOSEN
+  MAHASISWA
+  OPERATOR_FEEDER
+  AUDITOR_MUTU // SPMI
+  KEPEGAWAIAN
+  LPPM
+  CALON_MAHASISWA // PMB
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  nama      String
+  role      Role     @default(MAHASISWA)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  mahasiswa Mahasiswa?
+  dosen     Dosen?
+  pegawai   Pegawai?
+  pendaftar Pendaftar?
+}
+
+// =====================================================================
+//  STRUKTUR INSTITUSI (referensi PDDikti/Neofeeder)
+// =====================================================================
+model Fakultas {
+  id        String       @id @default(cuid())
+  kode      String       @unique
+  nama      String
+  prodi     ProgramStudi[]
+}
+
+model ProgramStudi {
+  id            String   @id @default(cuid())
+  kode          String   @unique // kode PDDikti
+  nama          String
+  jenjang       String   // D3, S1, S2, S3, Profesi
+  akreditasi    String?  // A, B, C, Unggul, Baik Sekali, Baik
+  fakultasId    String
+  fakultas      Fakultas @relation(fields: [fakultasId], references: [id])
+
+  mahasiswa     Mahasiswa[]
+  dosen         Dosen[]
+  kurikulum     Kurikulum[]
+  mataKuliah    MataKuliah[]
+  standarMutu   StandarMutu[]
+}
+
+model TahunAkademik {
+  id        String   @id @default(cuid())
+  kode      String   @unique // 20241 (ganjil), 20242 (genap)
+  nama      String   // 2024/2025 Ganjil
+  semester  String   // GANJIL | GENAP | PENDEK
+  aktif     Boolean  @default(false)
+  mulai     DateTime
+  selesai   DateTime
+
+  krs       KRS[]
+  kelas     Kelas[]
+  feederLog FeederSyncLog[]
+}
+
+// =====================================================================
+//  AKADEMIK — MAHASISWA & DOSEN
+// =====================================================================
+enum StatusMahasiswa {
+  AKTIF
+  CUTI
+  LULUS
+  DROP_OUT
+  MENGUNDURKAN_DIRI
+  NON_AKTIF
+}
+
+model Mahasiswa {
+  id              String          @id @default(cuid())
+  nim             String          @unique
+  userId          String          @unique
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prodiId         String
+  prodi           ProgramStudi    @relation(fields: [prodiId], references: [id])
+  angkatan        Int
+  status          StatusMahasiswa @default(AKTIF)
+  ipk             Float           @default(0)
+  totalSks        Int             @default(0)
+
+  // Data PDDikti
+  nisn            String?
+  jenisKelamin    String?         // L | P
+  tanggalLahir    DateTime?
+  tempatLahir     String?
+  alamat          String?
+  hp              String?
+  foto            String?         // URL/data URI foto mahasiswa
+
+  dosenWaliId     String?
+  dosenWali       Dosen?          @relation("DosenWali", fields: [dosenWaliId], references: [id])
+
+  krs             KRS[]
+  nilai           Nilai[]
+  enrollment      Enrollment[]
+  sesiPjjHadir    KehadiranPjj[]
+  pesertaWisuda   PesertaWisuda[]
+  createdAt       DateTime        @default(now())
+}
+
+enum JabatanFungsional {
+  ASISTEN_AHLI
+  LEKTOR
+  LEKTOR_KEPALA
+  GURU_BESAR
+  TENAGA_PENGAJAR
+}
+
+model Dosen {
+  id            String            @id @default(cuid())
+  nidn          String            @unique
+  userId        String            @unique
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prodiId       String
+  prodi         ProgramStudi      @relation(fields: [prodiId], references: [id])
+  jabatan       JabatanFungsional @default(TENAGA_PENGAJAR)
+  pendidikan    String?           // S2, S3
+  hp            String?
+
+  kelas         Kelas[]
+  mahasiswaWali Mahasiswa[]       @relation("DosenWali")
+  penelitian    Penelitian[]
+  pengabdian    Pengabdian[]
+  publikasi     Publikasi[]
+  createdAt     DateTime          @default(now())
+}
+
+// =====================================================================
+//  AKADEMIK — KURIKULUM, MATA KULIAH, KELAS, KRS, NILAI
+// =====================================================================
+model Kurikulum {
+  id         String       @id @default(cuid())
+  kode       String       @unique
+  nama       String
+  prodiId    String
+  prodi      ProgramStudi @relation(fields: [prodiId], references: [id])
+  tahun      Int
+  aktif      Boolean      @default(true)
+  mataKuliah MataKuliah[]
+}
+
+model MataKuliah {
+  id          String        @id @default(cuid())
+  kode        String        @unique
+  nama        String
+  sks         Int
+  semester    Int           // semester ke- (1..8)
+  jenis       String        @default("WAJIB") // WAJIB | PILIHAN
+  prodiId     String
+  prodi       ProgramStudi  @relation(fields: [prodiId], references: [id])
+  kurikulumId String?
+  kurikulum   Kurikulum?    @relation(fields: [kurikulumId], references: [id])
+  kelas       Kelas[]
+}
+
+model Kelas {
+  id             String        @id @default(cuid())
+  kode           String        @unique
+  mataKuliahId   String
+  mataKuliah     MataKuliah    @relation(fields: [mataKuliahId], references: [id])
+  dosenId        String
+  dosen          Dosen         @relation(fields: [dosenId], references: [id])
+  tahunAkademikId String
+  tahunAkademik  TahunAkademik @relation(fields: [tahunAkademikId], references: [id])
+  ruang          String?
+  hari           String?       // SENIN..SABTU
+  jamMulai       String?
+  jamSelesai     String?
+  kuota          Int           @default(40)
+  mode           String        @default("LURING") // LURING | DARING | HYBRID (PJJ)
+
+  krsDetail      KRSDetail[]
+  nilai          Nilai[]
+  course         Course?       // LMS
+  sesiPjj        SesiPjj[]     // PJJ
+}
+
+enum StatusKRS {
+  DRAFT
+  DIAJUKAN
+  DISETUJUI
+  DITOLAK
+}
+
+model KRS {
+  id              String        @id @default(cuid())
+  mahasiswaId     String
+  mahasiswa       Mahasiswa     @relation(fields: [mahasiswaId], references: [id])
+  tahunAkademikId String
+  tahunAkademik   TahunAkademik @relation(fields: [tahunAkademikId], references: [id])
+  status          StatusKRS     @default(DRAFT)
+  totalSks        Int           @default(0)
+  catatan         String?
+  detail          KRSDetail[]
+  createdAt       DateTime      @default(now())
+
+  @@unique([mahasiswaId, tahunAkademikId])
+}
+
+model KRSDetail {
+  id      String @id @default(cuid())
+  krsId   String
+  krs     KRS    @relation(fields: [krsId], references: [id], onDelete: Cascade)
+  kelasId String
+  kelas   Kelas  @relation(fields: [kelasId], references: [id])
+
+  @@unique([krsId, kelasId])
+}
+
+model Nilai {
+  id          String    @id @default(cuid())
+  mahasiswaId String
+  mahasiswa   Mahasiswa @relation(fields: [mahasiswaId], references: [id])
+  kelasId     String
+  kelas       Kelas     @relation(fields: [kelasId], references: [id])
+  tugas       Float?
+  uts         Float?
+  uas         Float?
+  nilaiAkhir  Float?
+  huruf       String?   // A, B+, B, ...
+  bobot       Float?    // 4.0, 3.5, ...
+  createdAt   DateTime  @default(now())
+
+  @@unique([mahasiswaId, kelasId])
+}
+
+// =====================================================================
+//  NEOFEEDER / PDDikti — sinkronisasi pelaporan
+// =====================================================================
+enum FeederStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+model FeederSyncLog {
+  id              String        @id @default(cuid())
+  entitas         String        // MAHASISWA | AKTIVITAS_KULIAH | NILAI | DOSEN | KRS
+  tahunAkademikId String?
+  tahunAkademik   TahunAkademik? @relation(fields: [tahunAkademikId], references: [id])
+  status          FeederStatus  @default(PENDING)
+  jumlahRecord    Int           @default(0)
+  jumlahBerhasil  Int           @default(0)
+  jumlahGagal     Int           @default(0)
+  pesan           String?
+  payload         String?       // JSON string payload yang dikirim ke Feeder
+  createdAt       DateTime      @default(now())
+}
+
+// Mapping kode lokal -> kode PDDikti (id_sms, id_prodi, id_smt dsb.)
+model FeederMapping {
+  id         String @id @default(cuid())
+  entitas    String // PRODI | MATAKULIAH | SEMESTER
+  kodeLokal  String
+  idFeeder   String // ID referensi di Neofeeder/PDDikti
+  keterangan String?
+
+  @@unique([entitas, kodeLokal])
+}
+
+// =====================================================================
+//  PJJ — Pembelajaran Jarak Jauh
+// =====================================================================
+model SesiPjj {
+  id          String         @id @default(cuid())
+  kelasId     String
+  kelas       Kelas          @relation(fields: [kelasId], references: [id])
+  pertemuanKe Int
+  judul       String
+  tanggal     DateTime
+  mode        String         @default("SINKRON") // SINKRON | ASINKRON
+  linkMeeting String?
+  rekaman     String?
+  materi      String?
+  durasiMenit Int?
+  kehadiran   KehadiranPjj[]
+}
+
+model KehadiranPjj {
+  id          String    @id @default(cuid())
+  sesiId      String
+  sesi        SesiPjj   @relation(fields: [sesiId], references: [id], onDelete: Cascade)
+  mahasiswaId String
+  mahasiswa   Mahasiswa @relation(fields: [mahasiswaId], references: [id])
+  hadir       Boolean   @default(false)
+  waktuMasuk  DateTime?
+  keterangan  String?
+
+  @@unique([sesiId, mahasiswaId])
+}
+
+// =====================================================================
+//  SPMI — Sistem Penjaminan Mutu Internal
+// =====================================================================
+model StandarMutu {
+  id          String       @id @default(cuid())
+  kode        String       @unique
+  nama        String
+  kategori    String       // PENDIDIKAN | PENELITIAN | PENGABDIAN | SDM | SARANA
+  deskripsi   String?
+  target      String?
+  prodiId     String?
+  prodi       ProgramStudi? @relation(fields: [prodiId], references: [id])
+  indikator   IndikatorMutu[]
+}
+
+model IndikatorMutu {
+  id            String      @id @default(cuid())
+  standarId     String
+  standar       StandarMutu @relation(fields: [standarId], references: [id], onDelete: Cascade)
+  nama          String
+  satuan        String?
+  targetNilai   Float?
+  capaian       Float?
+  tahun         Int
+}
+
+enum StatusAudit {
+  DIRENCANAKAN
+  BERLANGSUNG
+  SELESAI
+}
+
+model AuditMutu {
+  id          String       @id @default(cuid())
+  siklus      String       // AMI 2024, dsb
+  ruangLingkup String
+  tanggal     DateTime
+  auditor     String
+  status      StatusAudit  @default(DIRENCANAKAN)
+  temuan      TemuanAudit[]
+}
+
+model TemuanAudit {
+  id            String    @id @default(cuid())
+  auditId       String
+  audit         AuditMutu @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  kategori      String    // MAYOR | MINOR | OBSERVASI
+  deskripsi     String
+  akarMasalah   String?
+  tindakLanjut  String?
+  statusTindak  String    @default("TERBUKA") // TERBUKA | PROSES | SELESAI
+  batasWaktu    DateTime?
+}
+
+// =====================================================================
+//  LMS — Learning Management System (terintegrasi dg Kelas)
+// =====================================================================
+model Course {
+  id          String       @id @default(cuid())
+  kelasId     String       @unique
+  kelas       Kelas        @relation(fields: [kelasId], references: [id])
+  deskripsi   String?
+  silabus     String?
+  modul       ModulLms[]
+  tugas       TugasLms[]
+  kuis        Kuis[]
+  enrollment  Enrollment[]
+}
+
+model Enrollment {
+  id          String    @id @default(cuid())
+  courseId    String
+  course      Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  mahasiswaId String
+  mahasiswa   Mahasiswa @relation(fields: [mahasiswaId], references: [id])
+  progress    Float     @default(0)
+  createdAt   DateTime  @default(now())
+
+  @@unique([courseId, mahasiswaId])
+}
+
+model ModulLms {
+  id        String   @id @default(cuid())
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  urutan    Int
+  judul     String
+  konten    String?  // teks/markdown
+  tipe      String   @default("MATERI") // MATERI | VIDEO | DOKUMEN | LINK
+  url       String?
+}
+
+model TugasLms {
+  id          String        @id @default(cuid())
+  courseId    String
+  course      Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  judul       String
+  deskripsi   String?
+  deadline    DateTime?
+  bobot       Float         @default(0)
+  pengumpulan PengumpulanTugas[]
+}
+
+model PengumpulanTugas {
+  id          String   @id @default(cuid())
+  tugasId     String
+  tugas       TugasLms @relation(fields: [tugasId], references: [id], onDelete: Cascade)
+  mahasiswaId String
+  fileUrl     String?
+  catatan     String?
+  nilai       Float?
+  submittedAt DateTime @default(now())
+
+  @@unique([tugasId, mahasiswaId])
+}
+
+model Kuis {
+  id        String       @id @default(cuid())
+  courseId  String
+  course    Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  judul     String
+  durasi    Int          @default(30) // menit
+  soal      SoalKuis[]
+}
+
+model SoalKuis {
+  id         String @id @default(cuid())
+  kuisId     String
+  kuis       Kuis   @relation(fields: [kuisId], references: [id], onDelete: Cascade)
+  pertanyaan String
+  opsiA      String
+  opsiB      String
+  opsiC      String
+  opsiD      String
+  jawaban    String // A | B | C | D
+}
+
+// =====================================================================
+//  PMB — Penerimaan Mahasiswa Baru
+// =====================================================================
+enum StatusPendaftar {
+  DAFTAR
+  BAYAR
+  VERIFIKASI
+  UJIAN
+  DITERIMA
+  DITOLAK
+  DAFTAR_ULANG
+}
+
+model GelombangPmb {
+  id         String      @id @default(cuid())
+  nama       String
+  tahun      Int
+  mulai      DateTime
+  selesai    DateTime
+  biaya      Float       @default(0)
+  aktif      Boolean     @default(true)
+  pendaftar  Pendaftar[]
+}
+
+model Pendaftar {
+  id             String          @id @default(cuid())
+  noPendaftaran  String          @unique
+  userId         String?         @unique
+  user           User?           @relation(fields: [userId], references: [id])
+  gelombangId    String
+  gelombang      GelombangPmb    @relation(fields: [gelombangId], references: [id])
+  nama           String
+  email          String
+  hp             String?
+  asalSekolah    String?
+  pilihanProdi1  String?
+  pilihanProdi2  String?
+  status         StatusPendaftar @default(DAFTAR)
+  nilaiUjian     Float?
+  catatan        String?
+  createdAt      DateTime        @default(now())
+}
+
+// =====================================================================
+//  KEPEGAWAIAN — SDM
+// =====================================================================
+enum StatusPegawai {
+  TETAP
+  KONTRAK
+  HONORER
+  PENSIUN
+}
+
+model Pegawai {
+  id           String        @id @default(cuid())
+  nip          String        @unique
+  userId       String?       @unique
+  user         User?         @relation(fields: [userId], references: [id])
+  nama         String
+  jenis        String        @default("DOSEN") // DOSEN | TENDIK
+  status       StatusPegawai @default(TETAP)
+  unitKerja    String?
+  jabatan      String?
+  golongan     String?
+  tglMasuk     DateTime?
+  gajiPokok    Float         @default(0)
+  hp           String?
+  absensi      Absensi[]
+  cuti         Cuti[]
+  payroll      Payroll[]
+}
+
+model Absensi {
+  id         String   @id @default(cuid())
+  pegawaiId  String
+  pegawai    Pegawai  @relation(fields: [pegawaiId], references: [id], onDelete: Cascade)
+  tanggal    DateTime
+  jamMasuk   String?
+  jamPulang  String?
+  status     String   @default("HADIR") // HADIR | IZIN | SAKIT | ALPA | CUTI
+
+  @@unique([pegawaiId, tanggal])
+}
+
+model Cuti {
+  id         String   @id @default(cuid())
+  pegawaiId  String
+  pegawai    Pegawai  @relation(fields: [pegawaiId], references: [id], onDelete: Cascade)
+  jenis      String   // TAHUNAN | SAKIT | MELAHIRKAN | PENTING
+  mulai      DateTime
+  selesai    DateTime
+  alasan     String?
+  status     String   @default("DIAJUKAN") // DIAJUKAN | DISETUJUI | DITOLAK
+}
+
+model Payroll {
+  id          String   @id @default(cuid())
+  pegawaiId   String
+  pegawai     Pegawai  @relation(fields: [pegawaiId], references: [id], onDelete: Cascade)
+  periode     String   // 2024-07
+  gajiPokok   Float    @default(0)
+  tunjangan   Float    @default(0)
+  potongan    Float    @default(0)
+  totalGaji   Float    @default(0)
+  createdAt   DateTime @default(now())
+
+  @@unique([pegawaiId, periode])
+}
+
+// =====================================================================
+//  LPPM — Lembaga Penelitian & Pengabdian Masyarakat
+// =====================================================================
+enum StatusUsulan {
+  DIAJUKAN
+  REVIEW
+  DIDANAI
+  DITOLAK
+  SELESAI
+}
+
+model Penelitian {
+  id          String       @id @default(cuid())
+  judul       String
+  ketuaId     String
+  ketua       Dosen        @relation(fields: [ketuaId], references: [id])
+  tahun       Int
+  skema       String?      // Hibah Internal, PDP, dll
+  danaUsulan  Float        @default(0)
+  danaDisetujui Float      @default(0)
+  status      StatusUsulan @default(DIAJUKAN)
+  luaran      String?
+  createdAt   DateTime     @default(now())
+}
+
+model Pengabdian {
+  id          String       @id @default(cuid())
+  judul       String
+  ketuaId     String
+  ketua       Dosen        @relation(fields: [ketuaId], references: [id])
+  tahun       Int
+  mitra       String?
+  lokasi      String?
+  danaUsulan  Float        @default(0)
+  status      StatusUsulan @default(DIAJUKAN)
+  createdAt   DateTime     @default(now())
+}
+
+model Publikasi {
+  id        String @id @default(cuid())
+  judul     String
+  penulisId String
+  penulis   Dosen  @relation(fields: [penulisId], references: [id])
+  jenis     String // JURNAL | PROSIDING | BUKU | HKI
+  namaMedia String? // nama jurnal/konferensi
+  tahun     Int
+  indeksasi String? // SINTA, Scopus, WoS, dll
+  doi       String?
+  url       String?
+}
+
+// =====================================================================
+//  WISUDA — Pendaftaran, slide seremoni, ijazah
+// =====================================================================
+model PeriodeWisuda {
+  id        String          @id @default(cuid())
+  kode      String          @unique
+  nama      String // Wisuda Periode I TA 2024/2025
+  tanggal   DateTime
+  lokasi    String?
+  kuota     Int             @default(500)
+  biaya     Float           @default(0)
+  aktif     Boolean         @default(true)
+  createdAt DateTime        @default(now())
+  peserta   PesertaWisuda[]
+}
+
+enum StatusWisuda {
+  DAFTAR
+  VERIFIKASI
+  DITERIMA
+  DITOLAK
+  SELESAI
+}
+
+model PesertaWisuda {
+  id           String        @id @default(cuid())
+  periodeId    String
+  periode      PeriodeWisuda @relation(fields: [periodeId], references: [id], onDelete: Cascade)
+  mahasiswaId  String
+  mahasiswa    Mahasiswa     @relation(fields: [mahasiswaId], references: [id])
+  nomorUrut    Int? // nomor urut prosesi
+  noIjazah     String? // nomor seri ijazah
+  judulSkripsi String?
+  ipk          Float?
+  predikat     String? // MEMUASKAN | SANGAT_MEMUASKAN | CUMLAUDE
+  fotoUrl      String? // foto wisuda (URL/data URI); fallback ke foto mahasiswa
+  status       StatusWisuda  @default(DAFTAR)
+  catatan      String?
+  tanggalDaftar DateTime     @default(now())
+
+  @@unique([periodeId, mahasiswaId])
+}

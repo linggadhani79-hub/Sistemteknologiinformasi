@@ -1,0 +1,21 @@
+{
+  "name": "siakad-terpadu",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sistem Informasi Akademik Terpadu — SIAKAD, Neofeeder, PJJ, SPMI, LMS, PMB, Kepegawaian, LPPM",
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "postinstall": "npm --workspace backend run db:generate || true",
+    "dev": "concurrently -n api,web -c blue,green \"npm --workspace backend run dev\" \"npm --workspace frontend run dev\"",
+    "build": "npm --workspace backend run build && npm --workspace frontend run build",
+    "db:setup": "npm --workspace backend run db:push && npm --workspace backend run db:seed",
+    "backend": "npm --workspace backend run dev",
+    "frontend": "npm --workspace frontend run dev"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
