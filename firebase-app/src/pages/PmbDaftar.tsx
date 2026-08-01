@@ -1,10 +1,15 @@
 import { useEffect, useState } from 'react';
-import { api } from '../api';
+import { collection, getDocs, query, where, doc, getDoc, setDoc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { httpsCallable } from 'firebase/functions';
+import { db, storage, functions } from '../firebase';
+import { useAuth } from '../auth';
 import { PageHeader, Spinner, Badge, fmtRupiah } from '../components/ui';
 
 const alurStatus = ['DAFTAR', 'BAYAR', 'VERIFIKASI', 'UJIAN', 'DITERIMA', 'DAFTAR_ULANG'];
 
 export function PmbDaftar() {
+  const { user } = useAuth();
   const [status, setStatus] = useState<any>(null);
   const [gelombang, setGelombang] = useState<any[]>([]);
   const [prodi, setProdi] = useState<any[]>([]);
@@ -14,34 +19,36 @@ export function PmbDaftar() {
   const [msg, setMsg] = useState('');
 
   const load = async () => {
-    try {
-      const s = await api.get('/pmb/status/saya');
-      setStatus(s.data);
-    } catch {
-      const [g, p] = await Promise.all([api.get('/pmb/gelombang'), api.get('/akademik/prodi')]);
-      setGelombang(g.data.data);
-      setProdi(p.data.data);
-      if (g.data.data[0]) setForm((f) => ({ ...f, gelombangId: g.data.data[0].id }));
-    } finally {
-      setLoading(false);
+    const pendaftarSnap = await getDoc(doc(db, 'pendaftar', user!.uid));
+    if (pendaftarSnap.exists()) {
+      const p = pendaftarSnap.data();
+      const gSnap = await getDoc(doc(db, 'gelombangPmb', p.gelombangId));
+      setStatus({ id: pendaftarSnap.id, ...p, gelombang: gSnap.data() });
+    } else {
+      const [gSnap, pSnap] = await Promise.all([getDocs(collection(db, 'gelombangPmb')), getDocs(collection(db, 'prodi'))]);
+      const gList = gSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setGelombang(gList);
+      setProdi(pSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      if (gList[0]) setForm((f) => ({ ...f, gelombangId: gList[0].id }));
     }
+    setLoading(false);
   };
-  useEffect(() => { load(); }, []);
+  useEffect(() => { if (user) load(); }, [user]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setMsg('');
     try {
-      await api.post('/pmb/daftar', form);
+      const pmbDaftar = httpsCallable(functions, 'pmbDaftar');
+      await pmbDaftar(form);
       load();
     } catch (err: any) {
-      setMsg('❌ ' + (err.response?.data?.message ?? 'Gagal mendaftar'));
+      setMsg('❌ ' + (err.message ?? 'Gagal mendaftar'));
     }
   };
 
   if (loading) return <Spinner />;
 
-  // Belum mendaftar → formulir
   if (!status) {
     return (
       <div>
@@ -85,10 +92,8 @@ export function PmbDaftar() {
   }
 
   const tabs = [
-    { k: 'status', label: '📋 Status' },
-    { k: 'berkas', label: '📎 Berkas' },
-    { k: 'bayar', label: '💳 Pembayaran' },
-    { k: 'cbt', label: '🖥️ Ujian CBT' },
+    { k: 'status', label: '📋 Status' }, { k: 'berkas', label: '📎 Berkas' },
+    { k: 'bayar', label: '💳 Pembayaran' }, { k: 'cbt', label: '🖥️ Ujian CBT' },
   ] as const;
 
   return (
@@ -96,17 +101,15 @@ export function PmbDaftar() {
       <PageHeader title="Pendaftaran PMB" subtitle={`No. Pendaftaran: ${status.noPendaftaran}`} />
       <div className="mb-6 flex flex-wrap gap-2">
         {tabs.map((t) => (
-          <button key={t.k} onClick={() => setTab(t.k)}
-            className={`rounded-xl px-4 py-2 text-sm font-medium transition ${tab === t.k ? 'bg-gradient-to-r from-brand-500 to-brand-600 text-white shadow-sm' : 'bg-white text-slate-500 hover:bg-slate-50'}`}>
+          <button key={t.k} onClick={() => setTab(t.k)} className={`rounded-xl px-4 py-2 text-sm font-medium transition ${tab === t.k ? 'bg-gradient-to-r from-brand-500 to-brand-600 text-white shadow-sm' : 'bg-white text-slate-500 hover:bg-slate-50'}`}>
             {t.label}
           </button>
         ))}
       </div>
-
       {tab === 'status' && <StatusTab status={status} />}
-      {tab === 'berkas' && <BerkasTab />}
-      {tab === 'bayar' && <BayarTab />}
-      {tab === 'cbt' && <CbtTab />}
+      {tab === 'berkas' && <BerkasTab uid={user!.uid} />}
+      {tab === 'bayar' && <BayarTab uid={user!.uid} />}
+      {tab === 'cbt' && <CbtTab uid={user!.uid} />}
     </div>
   );
 }
@@ -117,7 +120,7 @@ function StatusTab({ status }: { status: any }) {
     <>
       <div className="card mb-4">
         <div className="mb-4 flex items-center justify-between">
-          <div><div className="text-lg font-semibold">{status.nama}</div><div className="text-sm text-gray-500">{status.gelombang.nama}</div></div>
+          <div><div className="text-lg font-semibold">{status.nama}</div><div className="text-sm text-gray-500">{status.gelombang?.nama}</div></div>
           <Badge>{status.status}</Badge>
         </div>
         <div className="flex items-center">
@@ -133,7 +136,7 @@ function StatusTab({ status }: { status: any }) {
       <div className="card grid gap-2 text-sm">
         <div className="flex justify-between"><span className="text-gray-500">Asal Sekolah</span><span>{status.asalSekolah ?? '-'}</span></div>
         <div className="flex justify-between"><span className="text-gray-500">Nilai Ujian CBT</span><span>{status.nilaiUjian ?? 'Belum ujian'}</span></div>
-        <div className="flex justify-between"><span className="text-gray-500">Biaya Pendaftaran</span><span>{fmtRupiah(status.gelombang.biaya)}</span></div>
+        <div className="flex justify-between"><span className="text-gray-500">Biaya Pendaftaran</span><span>{fmtRupiah(status.gelombang?.biaya ?? 0)}</span></div>
         {status.catatan && <div className="mt-2 rounded bg-amber-50 p-2 text-amber-700">{status.catatan}</div>}
       </div>
     </>
@@ -141,37 +144,45 @@ function StatusTab({ status }: { status: any }) {
 }
 
 const labelBerkas: Record<string, string> = { FOTO: 'Pas Foto', IJAZAH: 'Ijazah/SKL', KTP: 'KTP', KK: 'Kartu Keluarga', RAPOR: 'Rapor', AKTA: 'Akta Kelahiran' };
+const JENIS_BERKAS = ['FOTO', 'IJAZAH', 'KTP', 'KK', 'RAPOR', 'AKTA'];
 
-function BerkasTab() {
-  const [data, setData] = useState<any>(null);
+function BerkasTab({ uid }: { uid: string }) {
+  const [berkas, setBerkas] = useState<Record<string, any>>({});
   const [busy, setBusy] = useState('');
 
-  const load = () => api.get('/pmb/berkas/saya').then((r) => setData(r.data));
-  useEffect(() => { load(); }, []);
+  const load = async () => {
+    const snap = await getDocs(query(collection(db, 'berkasPendaftar'), where('pendaftarId', '==', uid)));
+    setBerkas(Object.fromEntries(snap.docs.map((d) => [d.data().jenis, { id: d.id, ...d.data() }])));
+  };
+  useEffect(() => { load(); }, [uid]);
 
   const upload = async (jenis: string, file: File) => {
     if (file.size > 3 * 1024 * 1024) return alert('Ukuran maksimal 3 MB');
     setBusy(jenis);
-    const data: string = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result as string); r.onerror = rej; r.readAsDataURL(file); });
-    await api.post('/pmb/berkas', { jenis, namaFile: file.name, mimeType: file.type, ukuran: file.size, data });
-    await load();
-    setBusy('');
+    try {
+      const path = `berkas/${uid}/${jenis}/${file.name}`;
+      const storageRef = ref(storage, path);
+      await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(storageRef);
+      await setDoc(doc(db, 'berkasPendaftar', `${uid}_${jenis}`), {
+        pendaftarId: uid, jenis, namaFile: file.name, mimeType: file.type, ukuran: file.size,
+        storagePath: url, status: 'PENDING', createdAt: Date.now(),
+      });
+      await load();
+    } finally { setBusy(''); }
   };
-
-  if (!data) return <Spinner />;
-  const map = Object.fromEntries((data.berkas ?? []).map((b: any) => [b.jenis, b]));
 
   return (
     <div className="card">
       <h3 className="mb-1 font-semibold">Upload Berkas Persyaratan</h3>
-      <p className="mb-4 text-sm text-gray-400">Format gambar/PDF, maksimal 3 MB per berkas.</p>
+      <p className="mb-4 text-sm text-gray-400">Format gambar/PDF, maksimal 3 MB per berkas — disimpan di Firebase Storage.</p>
       <div className="grid gap-3 sm:grid-cols-2">
-        {data.jenisWajib.map((j: string) => {
-          const b = map[j];
+        {JENIS_BERKAS.map((j) => {
+          const b = berkas[j];
           return (
             <div key={j} className="flex items-center justify-between rounded-xl border border-slate-200 p-3">
               <div>
-                <div className="text-sm font-medium">{labelBerkas[j] ?? j}</div>
+                <div className="text-sm font-medium">{labelBerkas[j]}</div>
                 {b ? <div className="text-xs text-gray-400">{b.namaFile}</div> : <div className="text-xs text-gray-300">Belum diunggah</div>}
               </div>
               <div className="flex items-center gap-2">
@@ -189,7 +200,7 @@ function BerkasTab() {
   );
 }
 
-function BayarTab() {
+function BayarTab({ uid }: { uid: string }) {
   const [tagihan, setTagihan] = useState<any[]>([]);
   const [banks, setBanks] = useState<any[]>([]);
   const [bank, setBank] = useState('');
@@ -197,15 +208,29 @@ function BayarTab() {
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
-    const [t, b] = await Promise.all([api.get('/pmb/pembayaran/saya'), api.get('/pmb/bank')]);
-    setTagihan(t.data); setBanks(b.data);
-    if (b.data[0]) setBank(b.data[0].bank);
+    const [tSnap, bSnap] = await Promise.all([
+      getDocs(query(collection(db, 'tagihanVA'), where('pendaftarId', '==', uid))),
+      getDocs(query(collection(db, 'konfigurasiVA'), where('aktif', '==', true))),
+    ]);
+    const tList = tSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    setTagihan(tList);
+    const bList = bSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    setBanks(bList);
+    if (bList[0]) setBank(bList[0].id);
     setLoading(false);
   };
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [uid]);
 
-  const buat = async () => { await api.post('/pmb/pembayaran/va', { bank, nomorHp: hp }); load(); };
-  const bayar = async (id: string) => { await api.post(`/pmb/pembayaran/${id}/konfirmasi`); load(); };
+  const buat = async () => {
+    const pmbVaGenerate = httpsCallable(functions, 'pmbVaGenerate');
+    await pmbVaGenerate({ bank, nomorHp: hp });
+    load();
+  };
+  const bayar = async (nomorVA: string) => {
+    const konfirmasi = httpsCallable(functions, 'pmbPembayaranKonfirmasi');
+    await konfirmasi({ nomorVA });
+    load();
+  };
 
   if (loading) return <Spinner />;
   const aktif = tagihan.find((t) => t.status !== 'DIBATALKAN');
@@ -226,10 +251,8 @@ function BayarTab() {
               <div className="text-right"><div className="opacity-70">No. HP</div><div className="font-semibold">{aktif.nomorHp ?? '-'}</div></div>
             </div>
           </div>
-          <p className="mt-3 text-xs text-gray-400">Transfer ke nomor VA di atas melalui ATM / m-banking {aktif.namaBank}. Pembayaran terverifikasi otomatis.</p>
-          {aktif.status === 'BELUM_BAYAR' && (
-            <button onClick={() => bayar(aktif.id)} className="btn mt-4 w-full">✅ Simulasi Bayar (demo)</button>
-          )}
+          <p className="mt-3 text-xs text-gray-400">Transfer ke nomor VA di atas melalui ATM / m-banking {aktif.namaBank}.</p>
+          {aktif.status === 'BELUM_BAYAR' && <button onClick={() => bayar(aktif.id)} className="btn mt-4 w-full">✅ Simulasi Bayar (demo)</button>}
           {aktif.status === 'LUNAS' && <div className="mt-4 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">Pembayaran lunas. Silakan lanjut ke Ujian CBT.</div>}
         </div>
       ) : (
@@ -237,9 +260,8 @@ function BayarTab() {
           <h3 className="mb-3 font-semibold">Pilih Bank untuk Virtual Account</h3>
           <div className="grid gap-2 sm:grid-cols-3">
             {banks.map((b) => (
-              <button key={b.bank} onClick={() => setBank(b.bank)}
-                className={`rounded-xl border p-4 text-left transition ${bank === b.bank ? 'border-brand-500 bg-brand-50' : 'border-slate-200 hover:border-slate-300'}`}>
-                <div className="text-lg font-bold">{b.bank}</div>
+              <button key={b.id} onClick={() => setBank(b.id)} className={`rounded-xl border p-4 text-left transition ${bank === b.id ? 'border-brand-500 bg-brand-50' : 'border-slate-200 hover:border-slate-300'}`}>
+                <div className="text-lg font-bold">{b.id}</div>
                 <div className="text-xs text-gray-400">{b.namaBank}</div>
               </button>
             ))}
@@ -252,21 +274,29 @@ function BayarTab() {
   );
 }
 
-function CbtTab() {
+function CbtTab({ uid }: { uid: string }) {
   const [ujian, setUjian] = useState<any>(null);
   const [soal, setSoal] = useState<any[] | null>(null);
   const [jawaban, setJawaban] = useState<Record<string, string>>({});
   const [hasil, setHasil] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => { api.get('/pmb/cbt/saya').then((r) => setUjian(r.data)).finally(() => setLoading(false)); }, []);
+  useEffect(() => {
+    (async () => {
+      const snap = await getDoc(doc(db, 'ujianCbt', uid));
+      setUjian(snap.exists() ? snap.data() : null);
+      setLoading(false);
+    })();
+  }, [uid]);
 
   const mulai = async () => {
-    const { data } = await api.post('/pmb/cbt/mulai');
+    const cbtMulai = httpsCallable(functions, 'cbtMulai');
+    const { data }: any = await cbtMulai({});
     setSoal(data.soal); setUjian({ ...data.ujian, status: 'BERLANGSUNG' });
   };
   const submit = async () => {
-    const { data } = await api.post('/pmb/cbt/submit', { jawaban });
+    const cbtSubmit = httpsCallable(functions, 'cbtSubmit');
+    const { data }: any = await cbtSubmit({ jawaban });
     setHasil(data); setSoal(null);
     setUjian((u: any) => ({ ...u, status: 'SELESAI', nilai: data.nilai }));
   };
@@ -320,7 +350,7 @@ function CbtTab() {
     <div className="card text-center">
       <div className="text-5xl">🖥️</div>
       <h3 className="mt-3 text-lg font-semibold">Ujian Masuk (CBT)</h3>
-      <p className="mt-1 text-sm text-gray-500">Ujian berbasis komputer: TPA, Matematika, Bahasa Indonesia & Inggris. Kerjakan sekali; hasil dinilai otomatis.</p>
+      <p className="mt-1 text-sm text-gray-500">Ujian berbasis komputer: TPA, Matematika, Bahasa Indonesia & Inggris. Kerjakan sekali; hasil dinilai otomatis di server.</p>
       <button onClick={mulai} className="btn mt-4">Mulai Ujian</button>
     </div>
   );

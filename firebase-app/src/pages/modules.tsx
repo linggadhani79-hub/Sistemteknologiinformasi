@@ -1,9 +1,9 @@
-import { fmtRupiah } from '../components/ui';
-import { ResourceList, Column } from '../components/ResourceList';
+import { ResourceList } from '../components/ResourceList';
+import { fmtRupiah, fmtTanggal } from '../components/ui';
 
 // ---------- AKADEMIK ----------
 export const ProdiPage = () => (
-  <ResourceList title="Program Studi" endpoint="/akademik/prodi" columns={[
+  <ResourceList title="Program Studi" collection="prodi" searchField="nama" resolve={[{ field: 'fakultasId', collection: 'fakultas', as: 'fakultas' }]} columns={[
     { key: 'kode', label: 'Kode PDDikti' },
     { key: 'nama', label: 'Nama Prodi' },
     { key: 'jenjang', label: 'Jenjang' },
@@ -13,7 +13,7 @@ export const ProdiPage = () => (
 );
 
 export const MataKuliahPage = () => (
-  <ResourceList title="Mata Kuliah" endpoint="/akademik/matakuliah" columns={[
+  <ResourceList title="Mata Kuliah" collection="mataKuliah" searchField="nama" resolve={[{ field: 'prodiId', collection: 'prodi', as: 'prodi' }]} columns={[
     { key: 'kode', label: 'Kode' },
     { key: 'nama', label: 'Nama' },
     { key: 'sks', label: 'SKS' },
@@ -24,7 +24,7 @@ export const MataKuliahPage = () => (
 );
 
 export const MahasiswaPage = () => (
-  <ResourceList title="Data Mahasiswa" endpoint="/akademik/mahasiswa" columns={[
+  <ResourceList title="Data Mahasiswa" collection="mahasiswa" searchField="nim" resolve={[{ field: 'prodiId', collection: 'prodi', as: 'prodi' }, { field: 'id', collection: 'users', as: 'user' }]} columns={[
     { key: 'nim', label: 'NIM' },
     { key: 'user.nama', label: 'Nama' },
     { key: 'prodi.nama', label: 'Prodi' },
@@ -35,7 +35,7 @@ export const MahasiswaPage = () => (
 );
 
 export const DosenPage = () => (
-  <ResourceList title="Data Dosen" endpoint="/akademik/dosen" columns={[
+  <ResourceList title="Data Dosen" collection="dosen" searchField="nidn" resolve={[{ field: 'prodiId', collection: 'prodi', as: 'prodi' }, { field: 'id', collection: 'users', as: 'user' }]} columns={[
     { key: 'nidn', label: 'NIDN' },
     { key: 'user.nama', label: 'Nama' },
     { key: 'prodi.nama', label: 'Prodi' },
@@ -45,41 +45,44 @@ export const DosenPage = () => (
 );
 
 export const KelasPage = () => (
-  <ResourceList title="Kelas / Jadwal" endpoint="/akademik/kelas" searchable={false} columns={[
-    { key: 'kode', label: 'Kode' },
-    { key: 'mataKuliah.nama', label: 'Mata Kuliah' },
-    { key: 'dosen.user.nama', label: 'Dosen' },
-    { key: 'jadwal', label: 'Jadwal', render: (r) => `${r.hari ?? '-'} ${r.jamMulai ?? ''}-${r.jamSelesai ?? ''}` },
-    { key: 'ruang', label: 'Ruang' },
-    { key: 'mode', label: 'Mode', badge: true },
-  ]} />
+  <ResourceList title="Kelas / Jadwal" collection="kelas" searchable={false}
+    resolve={[
+      { field: 'mataKuliahId', collection: 'mataKuliah', as: 'mataKuliah' },
+      { field: 'dosenId', collection: 'users', as: 'dosenUser' },
+    ]}
+    columns={[
+      { key: 'kode', label: 'Kode' },
+      { key: 'mataKuliah.nama', label: 'Mata Kuliah' },
+      { key: 'dosenUser.nama', label: 'Dosen' },
+      { key: 'jadwal', label: 'Jadwal', render: (r) => `${r.hari ?? '-'} ${r.jamMulai ?? ''}-${r.jamSelesai ?? ''}` },
+      { key: 'ruang', label: 'Ruang' },
+      { key: 'mode', label: 'Mode', badge: true },
+    ]} />
 );
 
 // ---------- SPMI ----------
 export const StandarMutuPage = () => (
-  <ResourceList title="Standar Mutu (SPMI)" endpoint="/spmi/standar" columns={[
+  <ResourceList title="Standar Mutu (SPMI)" collection="standarMutu" searchField="nama" columns={[
     { key: 'kode', label: 'Kode' },
     { key: 'nama', label: 'Standar' },
     { key: 'kategori', label: 'Kategori', badge: true },
     { key: 'target', label: 'Target' },
-    { key: 'indikator', label: 'Jml Indikator', render: (r) => r.indikator?.length ?? 0 },
   ]} />
 );
 
 export const AuditMutuPage = () => (
-  <ResourceList title="Audit Mutu Internal (AMI)" endpoint="/spmi/audit" searchable={false} columns={[
+  <ResourceList title="Audit Mutu Internal (AMI)" collection="auditMutu" searchable={false} columns={[
     { key: 'siklus', label: 'Siklus' },
     { key: 'ruangLingkup', label: 'Ruang Lingkup' },
     { key: 'auditor', label: 'Auditor' },
-    { key: 'tanggal', label: 'Tanggal', render: (r) => new Date(r.tanggal).toLocaleDateString('id-ID') },
+    { key: 'tanggal', label: 'Tanggal', render: (r) => fmtTanggal(r.tanggal) },
     { key: 'status', label: 'Status', badge: true },
-    { key: 'temuan', label: 'Temuan', render: (r) => r.temuan?.length ?? 0 },
   ]} />
 );
 
 // ---------- PMB ----------
 export const PendaftarPage = () => (
-  <ResourceList title="Pendaftar PMB" endpoint="/pmb/pendaftar" columns={[
+  <ResourceList title="Pendaftar PMB" collection="pendaftar" searchField="nama" resolve={[{ field: 'gelombangId', collection: 'gelombangPmb', as: 'gelombang' }]} columns={[
     { key: 'noPendaftaran', label: 'No. Daftar' },
     { key: 'nama', label: 'Nama' },
     { key: 'asalSekolah', label: 'Asal Sekolah' },
@@ -89,17 +92,9 @@ export const PendaftarPage = () => (
   ]} />
 );
 
-export const SoalCbtPage = () => (
-  <ResourceList title="Bank Soal CBT" endpoint="/pmb/cbt/soal" columns={[
-    { key: 'kategori', label: 'Kategori', badge: true },
-    { key: 'pertanyaan', label: 'Pertanyaan' },
-    { key: 'jawaban', label: 'Kunci' },
-  ]} />
-);
-
 // ---------- KEPEGAWAIAN ----------
 export const PegawaiPage = () => (
-  <ResourceList title="Data Pegawai" endpoint="/kepegawaian/pegawai" columns={[
+  <ResourceList title="Data Pegawai" collection="pegawai" searchField="nama" columns={[
     { key: 'nip', label: 'NIP' },
     { key: 'nama', label: 'Nama' },
     { key: 'jenis', label: 'Jenis' },
@@ -111,9 +106,9 @@ export const PegawaiPage = () => (
 
 // ---------- LPPM ----------
 export const PenelitianPage = () => (
-  <ResourceList title="Penelitian" endpoint="/lppm/penelitian" columns={[
+  <ResourceList title="Penelitian" collection="penelitian" searchField="judul" resolve={[{ field: 'ketuaId', collection: 'users', as: 'ketuaUser' }]} columns={[
     { key: 'judul', label: 'Judul' },
-    { key: 'ketua.user.nama', label: 'Ketua' },
+    { key: 'ketuaUser.nama', label: 'Ketua' },
     { key: 'tahun', label: 'Tahun' },
     { key: 'skema', label: 'Skema' },
     { key: 'danaDisetujui', label: 'Dana', render: (r) => fmtRupiah(r.danaDisetujui) },
@@ -122,9 +117,9 @@ export const PenelitianPage = () => (
 );
 
 export const PengabdianPage = () => (
-  <ResourceList title="Pengabdian Masyarakat" endpoint="/lppm/pengabdian" columns={[
+  <ResourceList title="Pengabdian Masyarakat" collection="pengabdian" searchField="judul" resolve={[{ field: 'ketuaId', collection: 'users', as: 'ketuaUser' }]} columns={[
     { key: 'judul', label: 'Judul' },
-    { key: 'ketua.user.nama', label: 'Ketua' },
+    { key: 'ketuaUser.nama', label: 'Ketua' },
     { key: 'mitra', label: 'Mitra' },
     { key: 'lokasi', label: 'Lokasi' },
     { key: 'tahun', label: 'Tahun' },
@@ -133,9 +128,9 @@ export const PengabdianPage = () => (
 );
 
 export const PublikasiPage = () => (
-  <ResourceList title="Publikasi Ilmiah" endpoint="/lppm/publikasi" columns={[
+  <ResourceList title="Publikasi Ilmiah" collection="publikasi" searchField="judul" resolve={[{ field: 'penulisId', collection: 'users', as: 'penulisUser' }]} columns={[
     { key: 'judul', label: 'Judul' },
-    { key: 'penulis.user.nama', label: 'Penulis' },
+    { key: 'penulisUser.nama', label: 'Penulis' },
     { key: 'jenis', label: 'Jenis' },
     { key: 'namaMedia', label: 'Media' },
     { key: 'tahun', label: 'Tahun' },
@@ -143,12 +138,12 @@ export const PublikasiPage = () => (
   ]} />
 );
 
-// ---- WISUDA ----
+// ---------- WISUDA ----------
 export const PeriodeWisudaPage = () => (
-  <ResourceList title="Periode Wisuda" endpoint="/wisuda/periode" searchable={false} columns={[
+  <ResourceList title="Periode Wisuda" collection="periodeWisuda" searchable={false} columns={[
     { key: 'kode', label: 'Kode' },
     { key: 'nama', label: 'Nama Periode' },
-    { key: 'tanggal', label: 'Tanggal', render: (r) => new Date(r.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) },
+    { key: 'tanggal', label: 'Tanggal', render: (r) => fmtTanggal(r.tanggal) },
     { key: 'lokasi', label: 'Lokasi' },
     { key: 'biaya', label: 'Biaya', render: (r) => fmtRupiah(r.biaya) },
     { key: 'aktif', label: 'Status', render: (r) => (r.aktif ? 'Aktif' : 'Tutup') },

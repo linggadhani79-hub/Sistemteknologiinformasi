@@ -2,15 +2,11 @@ export interface NavItem {
   label: string;
   path: string;
   icon: string;
-  roles: string[]; // roles yang boleh melihat menu; kosong = semua
+  roles: string[]; // kosong = semua peran
 }
 
-// Grup menu berdasarkan modul
 export const navGroups: { group: string; items: NavItem[] }[] = [
-  {
-    group: 'Umum',
-    items: [{ label: 'Dashboard', path: '/', icon: '🏠', roles: [] }],
-  },
+  { group: 'Umum', items: [{ label: 'Dashboard', path: '/', icon: '🏠', roles: [] }] },
   {
     group: 'Akademik',
     items: [
@@ -21,12 +17,10 @@ export const navGroups: { group: string; items: NavItem[] }[] = [
       { label: 'Kelas', path: '/akademik/kelas', icon: '🗓️', roles: ['SUPERADMIN', 'ADMIN_AKADEMIK'] },
       { label: 'KRS Saya', path: '/akademik/krs', icon: '📝', roles: ['MAHASISWA'] },
       { label: 'Transkrip', path: '/akademik/transkrip', icon: '📄', roles: ['MAHASISWA'] },
+      { label: 'Input Nilai', path: '/akademik/nilai', icon: '✏️', roles: ['SUPERADMIN', 'ADMIN_AKADEMIK', 'DOSEN'] },
     ],
   },
-  {
-    group: 'Neofeeder / PDDikti',
-    items: [{ label: 'Sinkronisasi Feeder', path: '/neofeeder', icon: '🔄', roles: ['SUPERADMIN', 'OPERATOR_FEEDER'] }],
-  },
+  { group: 'Neofeeder / PDDikti', items: [{ label: 'Sinkronisasi Feeder', path: '/neofeeder', icon: '🔄', roles: ['SUPERADMIN', 'OPERATOR_FEEDER'] }] },
   {
     group: 'Pembelajaran',
     items: [

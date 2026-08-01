@@ -9,10 +9,16 @@ Sistem informasi akademik **full-stack** terintegrasi untuk perguruan tinggi, me
 | 💻 **LMS** | Learning Management System: course, modul, tugas, kuis, enrollment |
 | 📡 **PJJ** | Pembelajaran Jarak Jauh: sesi sinkron/asinkron + presensi daring |
 | ✅ **SPMI** | Penjaminan Mutu Internal: standar mutu, indikator, Audit Mutu Internal (AMI), temuan |
-| 📋 **PMB** | Penerimaan Mahasiswa Baru: gelombang, pendaftaran online, alur seleksi |
+| 📋 **PMB** | Penerimaan Mahasiswa Baru: gelombang, pendaftaran online, **upload berkas**, **pembayaran Virtual Account** (BRI/Mandiri/BTN + no. HP), **ujian CBT** (dinilai otomatis), verifikasi & alur seleksi |
 | 👥 **Kepegawaian** | Data pegawai, absensi, cuti, generate payroll |
 | 🔬 **LPPM** | Penelitian, pengabdian masyarakat, publikasi ilmiah |
 | 🎓 **Wisuda** | Pendaftaran wisuda, verifikasi peserta, generate nomor ijazah, **slide seremoni** (foto + nama), **cetak ijazah** |
+
+> 🔥 Ada juga implementasi **paralel** berbasis Firebase (Auth, Firestore, Storage,
+> Cloud Functions) di [`firebase-app/`](./firebase-app) — dibangun agar frontend-nya
+> bisa di-preview sebagai aplikasi client-only di **Google AI Studio Build**, sesuatu
+> yang tidak bisa dilakukan versi Express/PostgreSQL di bawah ini (browser tidak bisa
+> bicara protokol TCP PostgreSQL). Lihat `firebase-app/README.md` untuk detail.
 
 ## 🏗️ Arsitektur
 
@@ -102,7 +108,7 @@ Semua endpoint di-prefix `/api`. Autentikasi via header `Authorization: Bearer <
 | PJJ | `GET /pjj/sesi`, `POST /pjj/sesi/:id/hadir` |
 | SPMI | `GET /spmi/standar`, `GET /spmi/dashboard` |
 | LMS | `GET /lms/course/:id/belajar`, `POST /lms/kuis/:id/submit` |
-| PMB | `POST /pmb/daftar`, `GET /pmb/status/saya`, `GET /pmb/dashboard` |
+| PMB | `POST /pmb/daftar`, `POST /pmb/berkas`, `POST /pmb/pembayaran/va`, `POST /pmb/cbt/mulai`, `POST /pmb/cbt/submit`, `PUT /pmb/va-config/:id` |
 | Kepegawaian | `GET /kepegawaian/pegawai`, `POST /kepegawaian/payroll/generate` |
 | LPPM | `GET /lppm/penelitian`, `PATCH /lppm/penelitian/:id/review` |
 | Wisuda | `POST /wisuda/daftar`, `GET /wisuda/periode/:id/slide`, `POST /wisuda/periode/:id/generate-nomor`, `GET /wisuda/ijazah/:id` |

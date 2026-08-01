@@ -1,0 +1,11 @@
+{
+  "indexes": [
+    { "collectionGroup": "nilai", "queryScope": "COLLECTION", "fields": [{ "fieldPath": "mahasiswaId", "order": "ASCENDING" }, { "fieldPath": "createdAt", "order": "DESCENDING" }] },
+    { "collectionGroup": "krs", "queryScope": "COLLECTION", "fields": [{ "fieldPath": "mahasiswaId", "order": "ASCENDING" }, { "fieldPath": "createdAt", "order": "DESCENDING" }] },
+    { "collectionGroup": "krs", "queryScope": "COLLECTION", "fields": [{ "fieldPath": "kelasIds", "arrayConfig": "CONTAINS" }, { "fieldPath": "status", "order": "ASCENDING" }] },
+    { "collectionGroup": "kelas", "queryScope": "COLLECTION", "fields": [{ "fieldPath": "tahunAkademikId", "order": "ASCENDING" }, { "fieldPath": "kode", "order": "ASCENDING" }] },
+    { "collectionGroup": "pesertaWisuda", "queryScope": "COLLECTION", "fields": [{ "fieldPath": "periodeId", "order": "ASCENDING" }, { "fieldPath": "nomorUrut", "order": "ASCENDING" }] },
+    { "collectionGroup": "sesiPjj", "queryScope": "COLLECTION", "fields": [{ "fieldPath": "kelasId", "order": "ASCENDING" }, { "fieldPath": "tanggal", "order": "DESCENDING" }] }
+  ],
+  "fieldOverrides": []
+}

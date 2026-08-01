@@ -36,6 +36,12 @@ async function main() {
     prisma.cuti.deleteMany(),
     prisma.payroll.deleteMany(),
     prisma.pegawai.deleteMany(),
+    prisma.jawabanCbt.deleteMany(),
+    prisma.ujianCbt.deleteMany(),
+    prisma.tagihanVA.deleteMany(),
+    prisma.berkasPendaftar.deleteMany(),
+    prisma.konfigurasiVA.deleteMany(),
+    prisma.soalCbt.deleteMany(),
     prisma.pendaftar.deleteMany(),
     prisma.gelombangPmb.deleteMany(),
     prisma.feederSyncLog.deleteMany(),
@@ -233,7 +239,28 @@ async function main() {
   });
   const calon = await mkUser('calon@gmail.com', 'Calon Mahasiswa Baru', 'CALON_MAHASISWA');
   await prisma.pendaftar.create({
-    data: { noPendaftaran: 'PMB20250001', userId: calon.id, gelombangId: gelombang.id, nama: 'Calon Mahasiswa Baru', email: 'calon@gmail.com', asalSekolah: 'SMAN 1 Jakarta', pilihanProdi1: ti.id, pilihanProdi2: si.id, status: 'VERIFIKASI' },
+    data: { noPendaftaran: 'PMB20250001', userId: calon.id, gelombangId: gelombang.id, nama: 'Calon Mahasiswa Baru', email: 'calon@gmail.com', hp: '081234567890', asalSekolah: 'SMAN 1 Jakarta', pilihanProdi1: ti.id, pilihanProdi2: si.id, status: 'DAFTAR' },
+  });
+
+  // Konfigurasi Virtual Account per bank
+  await prisma.konfigurasiVA.createMany({
+    data: [
+      { bank: 'BRI', namaBank: 'Bank BRI', kodeBank: '002', prefixVA: '88810', aktif: true },
+      { bank: 'MANDIRI', namaBank: 'Bank Mandiri', kodeBank: '008', prefixVA: '89080', aktif: true },
+      { bank: 'BTN', namaBank: 'Bank BTN', kodeBank: '200', prefixVA: '88060', aktif: true },
+    ],
+  });
+
+  // Bank soal CBT
+  await prisma.soalCbt.createMany({
+    data: [
+      { kategori: 'TPA', pertanyaan: 'Jika A > B dan B > C, maka …', opsiA: 'A < C', opsiB: 'A > C', opsiC: 'A = C', opsiD: 'Tidak dapat ditentukan', jawaban: 'B' },
+      { kategori: 'TPA', pertanyaan: 'Lawan kata dari "OPTIMIS" adalah …', opsiA: 'Yakin', opsiB: 'Ragu', opsiC: 'Pesimis', opsiD: 'Percaya', jawaban: 'C' },
+      { kategori: 'MATEMATIKA', pertanyaan: 'Hasil dari 15 × 12 adalah …', opsiA: '170', opsiB: '180', opsiC: '190', opsiD: '160', jawaban: 'B' },
+      { kategori: 'MATEMATIKA', pertanyaan: 'Jika 2x + 6 = 20, maka x = …', opsiA: '5', opsiB: '6', opsiC: '7', opsiD: '8', jawaban: 'C' },
+      { kategori: 'BAHASA_INDONESIA', pertanyaan: 'Kalimat baku yang benar adalah …', opsiA: 'Saya pergi kepasar', opsiB: 'Saya pergi ke pasar', opsiC: 'Saya pergi kepada pasar', opsiD: 'Saya pergi di pasar', jawaban: 'B' },
+      { kategori: 'BAHASA_INGGRIS', pertanyaan: 'She ___ to school every day.', opsiA: 'go', opsiB: 'goes', opsiC: 'going', opsiD: 'gone', jawaban: 'B' },
+    ],
   });
 
   // ---- Kepegawaian ----

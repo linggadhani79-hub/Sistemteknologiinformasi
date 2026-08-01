@@ -6,16 +6,17 @@ import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { Transkrip } from './pages/Transkrip';
 import { KRS } from './pages/KRS';
+import { NilaiInput } from './pages/NilaiInput';
 import { Neofeeder } from './pages/Neofeeder';
-import { PmbDaftar } from './pages/PmbDaftar';
 import { Lms } from './pages/Lms';
 import { Pjj } from './pages/Pjj';
 import { Payroll } from './pages/Payroll';
+import { PmbDaftar } from './pages/PmbDaftar';
+import { PmbBerkas, PmbPembayaran, PmbBankVA, PmbSoalCbt } from './pages/PmbAdmin';
 import { WisudaDaftar } from './pages/WisudaDaftar';
 import { WisudaAdmin } from './pages/WisudaAdmin';
 import { WisudaSlide } from './pages/WisudaSlide';
 import { Ijazah } from './pages/Ijazah';
-import { PmbBerkas, PmbPembayaran, PmbBankVA } from './pages/PmbAdmin';
 import * as M from './pages/modules';
 
 function Protected({ children }: { children: JSX.Element }) {
@@ -25,7 +26,7 @@ function Protected({ children }: { children: JSX.Element }) {
   return <Layout>{children}</Layout>;
 }
 
-// Halaman layar penuh (tanpa sidebar): slide seremoni & cetak ijazah
+// Halaman layar penuh (tanpa sidebar): slide seremoni
 function FullScreen({ children }: { children: JSX.Element }) {
   const { user, loading } = useAuth();
   if (loading) return <Spinner />;
@@ -47,6 +48,7 @@ function Routing() {
       <Route path="/akademik/kelas" element={P(<M.KelasPage />)} />
       <Route path="/akademik/krs" element={P(<KRS />)} />
       <Route path="/akademik/transkrip" element={P(<Transkrip />)} />
+      <Route path="/akademik/nilai" element={P(<NilaiInput />)} />
       {/* Neofeeder */}
       <Route path="/neofeeder" element={P(<Neofeeder />)} />
       {/* Pembelajaran */}
@@ -61,7 +63,7 @@ function Routing() {
       <Route path="/pmb/berkas" element={P(<PmbBerkas />)} />
       <Route path="/pmb/pembayaran" element={P(<PmbPembayaran />)} />
       <Route path="/pmb/bank-va" element={P(<PmbBankVA />)} />
-      <Route path="/pmb/soal-cbt" element={P(<M.SoalCbtPage />)} />
+      <Route path="/pmb/soal-cbt" element={P(<PmbSoalCbt />)} />
       {/* Wisuda */}
       <Route path="/wisuda/daftar" element={P(<WisudaDaftar />)} />
       <Route path="/wisuda/peserta" element={P(<WisudaAdmin />)} />
